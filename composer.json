@@ -27,7 +27,7 @@
     "class": "pragmatic\\seo\\PragmaticSeo",
     "developer": "Pragmatic",
     "developerUrl": "https://www.pragmatic.cat",
-    "documentationUrl": "https://github.com/pragmaticcat/seo/blob/main/README.md",
+    "documentationUrl": "https://github.com/pragmaticcat/pragmatic-seo/blob/main/README.md",
     "hasSettings": false,
     "hasCpSection": true
   }

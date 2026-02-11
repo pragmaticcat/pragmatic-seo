@@ -44,7 +44,7 @@ class PragmaticSeo extends Plugin
                 if ($groupKey === null) {
                     $newItem = [
                         'label' => 'Pragmatic',
-                        'url' => 'pragmatic-seo',
+                        'url' => 'pragmatic-seo/general',
                         'icon' => __DIR__ . '/icons/icon.svg',
                         'subnav' => [],
                     ];
@@ -77,7 +77,7 @@ class PragmaticSeo extends Plugin
 
                 $event->navItems[$groupKey]['subnav']['seo'] = [
                     'label' => 'SEO',
-                    'url' => 'pragmatic-seo',
+                    'url' => 'pragmatic-seo/general',
                 ];
             }
         );

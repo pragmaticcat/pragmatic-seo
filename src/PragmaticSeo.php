@@ -30,7 +30,8 @@ class PragmaticSeo extends Plugin
     public function getCpNavItem(): array
     {
         $item = parent::getCpNavItem();
-        $item['label'] = 'Pragmatic';
+        $item['label'] = 'SEO';
+        $item['navLabel'] = 'Pragmatic';
         $item['subnav'] = [
             'seo' => [
                 'label' => 'SEO',

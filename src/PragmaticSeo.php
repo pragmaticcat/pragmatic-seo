@@ -26,10 +26,10 @@ class PragmaticSeo extends Plugin
             UrlManager::EVENT_REGISTER_CP_URL_RULES,
             function (RegisterUrlRulesEvent $event) {
                 $event->rules['pragmatic-seo'] = 'pragmatic-seo/default/index';
-                $event->rules['pragmatic-seo/general'] = 'pragmatic-seo/default/general';
                 $event->rules['pragmatic-seo/images'] = 'pragmatic-seo/default/images';
                 $event->rules['pragmatic-seo/options'] = 'pragmatic-seo/default/options';
                 $event->rules['pragmatic-seo/content'] = 'pragmatic-seo/default/content';
+                $event->rules['pragmatic-seo/general'] = 'pragmatic-seo/default/general';
             }
         );
 
@@ -57,7 +57,7 @@ class PragmaticSeo extends Plugin
                 if ($groupKey === null) {
                     $newItem = [
                         'label' => 'Pragmatic',
-                        'url' => 'pragmatic-seo/general',
+                        'url' => 'pragmatic-seo/content',
                         'icon' => __DIR__ . '/icons/icon.svg',
                         'subnav' => [],
                     ];
@@ -90,7 +90,7 @@ class PragmaticSeo extends Plugin
 
                 $event->navItems[$groupKey]['subnav']['seo'] = [
                     'label' => 'SEO',
-                    'url' => 'pragmatic-seo/general',
+                    'url' => 'pragmatic-seo/content',
                 ];
             }
         );

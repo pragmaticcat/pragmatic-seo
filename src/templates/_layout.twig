@@ -1,14 +1,34 @@
 {% extends parentLayout|default('_layouts/cp') %}
 
-{% set title = title ?? 'SEO' %}
+{% set title = title ?? 'Contenido' %}
+{% set selectedNavItem = 'pragmatic' %}
 {% set selectedSubnavItem = 'seo' %}
-{% set selectedTab = craft.app.request.getSegment(2) %}
+{% set selectedTab = craft.app.request.getSegment(2) ?? 'content' %}
+{% set seoBaseUrl = url('pragmatic-seo/content') %}
+{% set currentPath = craft.app.request.pathInfo %}
+{% set crumbs = crumbs ?? [
+  { label: 'Pragmatic', url: seoBaseUrl },
+  { label: 'SEO', url: seoBaseUrl },
+  { label: title, url: currentPath ? url(currentPath) : seoBaseUrl },
+] %}
 
 {% set tabs = {
-  'general': { label: 'General', url: url('pragmatic-seo/general') },
   'content': { label: 'Contenido', url: url('pragmatic-seo/content') },
   'images': { label: 'Imagenes', url: url('pragmatic-seo/images') },
   'options': { label: 'Opciones', url: url('pragmatic-seo/options') }
 } %}
 
 {% block content %}{% endblock %}
+
+{% js %}
+  if (window.location.pathname.includes('/pragmatic-seo/')) {
+    const pragmaticItem = document.querySelector('#global-sidebar .nav [data-key="pragmatic"]');
+    if (pragmaticItem) {
+      pragmaticItem.classList.add('expanded', 'sel');
+      const subnav = pragmaticItem.querySelector('ul');
+      if (subnav) {
+        subnav.style.display = 'block';
+      }
+    }
+  }
+{% endjs %}

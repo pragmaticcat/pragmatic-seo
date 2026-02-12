@@ -18,12 +18,12 @@ class DefaultController extends Controller
 
     public function actionIndex(): Response
     {
-        return $this->redirect('pragmatic-seo/general');
+        return $this->redirect('pragmatic-seo/content');
     }
 
     public function actionGeneral(): Response
     {
-        return $this->renderTemplate('pragmatic-seo/general');
+        return $this->redirect('pragmatic-seo/content');
     }
 
     public function actionOptions(): Response

@@ -19,7 +19,7 @@ class SeoFieldValue extends Model
         ];
     }
 
-    public function toArray(): array
+    public function toArray(array $fields = [], array $expand = [], $recursive = true): array
     {
         return [
             'title' => $this->title,

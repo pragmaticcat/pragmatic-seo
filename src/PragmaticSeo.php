@@ -115,6 +115,11 @@ class PragmaticSeo extends Plugin
                     'label' => 'SEO',
                     'url' => 'pragmatic-seo/content',
                 ];
+
+                $path = Craft::$app->getRequest()->getPathInfo();
+                if ($path === 'pragmatic-seo' || str_starts_with($path, 'pragmatic-seo/')) {
+                    $event->navItems[$groupKey]['url'] = 'pragmatic-seo';
+                }
             }
         );
         

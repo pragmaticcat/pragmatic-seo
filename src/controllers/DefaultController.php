@@ -410,7 +410,7 @@ class DefaultController extends Controller
 
     private function hasAssetAltAttribute(Asset $asset): bool
     {
-        return in_array('alt', $asset->attributes(), true) || method_exists($asset, 'getAltText');
+        return method_exists($asset, 'getAltText') || $asset->canGetProperty('alt') || $asset->canSetProperty('alt');
     }
 
     private function getAssetAltValue(Asset $asset): ?string
@@ -418,16 +418,16 @@ class DefaultController extends Controller
         if (method_exists($asset, 'getAltText')) {
             return (string)$asset->getAltText();
         }
-        if ($this->hasAssetAltAttribute($asset)) {
-            return (string)$asset->getAttribute('alt');
+        if ($asset->canGetProperty('alt')) {
+            return (string)($asset->alt ?? '');
         }
         return null;
     }
 
     private function setAssetAltValue(Asset $asset, string $value): void
     {
-        if ($this->hasAssetAltAttribute($asset)) {
-            $asset->setAttribute('alt', $value);
+        if ($asset->canSetProperty('alt')) {
+            $asset->alt = $value;
         }
     }
 }

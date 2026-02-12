@@ -1,47 +1,24 @@
 {% import "_includes/forms" as forms %}
 
-{% set seoFieldUid = field.handle ~ '-seo-tabs' %}
+{% set seoFieldUid = (field.handle ~ '-seo-tabs-' ~ random())|id %}
 
 {% css %}
-  .seo-tabs-wrap .seo-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  @media (max-width: 900px) {
-    .seo-tabs-wrap .seo-grid {
-      grid-template-columns: 1fr;
-    }
-  }
-
-  .seo-tabs-wrap .seo-tab-buttons {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-  }
-
-  .seo-tabs-wrap .seo-tab-btn {
-    cursor: pointer;
-  }
-
-  .seo-tabs-wrap .seo-tab-btn:not(.active) {
-    opacity: 0.75;
-  }
+  .seo-field-tabs .tab-panel.hidden { display: none; }
 {% endcss %}
 
-<div id="{{ seoFieldUid }}" class="seo-tabs-wrap">
-  <div class="seo-tab-buttons">
-    <button type="button" class="btn seo-tab-btn active" data-target="{{ seoFieldUid }}-general">General</button>
-    <button type="button" class="btn seo-tab-btn" data-target="{{ seoFieldUid }}-options">Opciones</button>
+<div id="{{ seoFieldUid }}" class="seo-field-tabs">
+  <div class="tabs">
+    <a class="tab sel" href="#{{ seoFieldUid }}-general">General</a>
+    <a class="tab" href="#{{ seoFieldUid }}-options">Opciones</a>
   </div>
 
-  <div id="{{ seoFieldUid }}-general" class="seo-tab-panel">
-    <div class="seo-grid">
+  <div id="{{ seoFieldUid }}-general" class="tab-panel">
+    <div class="flex-fields">
       {{ forms.textField({
         label: 'Titulo',
         name: field.handle ~ '[title]',
         value: value.title,
+        fieldClass: 'width-50',
       }) }}
 
       {{ forms.textareaField({
@@ -49,8 +26,11 @@
         name: field.handle ~ '[description]',
         value: value.description,
         rows: 3,
+        fieldClass: 'width-50',
       }) }}
+    </div>
 
+    <div class="flex-fields">
       {{ forms.elementSelectField({
         label: 'Imagen',
         id: field.handle ~ '-image',
@@ -60,6 +40,7 @@
         limit: 1,
         sources: '*',
         criteria: { kind: 'image' },
+        fieldClass: 'width-50',
       }) }}
 
       {{ forms.textareaField({
@@ -67,17 +48,19 @@
         name: field.handle ~ '[imageDescription]',
         value: value.imageDescription,
         rows: 3,
+        fieldClass: 'width-50',
       }) }}
     </div>
   </div>
 
-  <div id="{{ seoFieldUid }}-options" class="seo-tab-panel" style="display: none;">
-    <div class="seo-grid">
+  <div id="{{ seoFieldUid }}-options" class="tab-panel hidden">
+    <div class="flex-fields">
       {{ forms.lightswitchField({
         label: 'Sitemap: visible',
         name: field.handle ~ '[sitemapEnabled]',
         on: value.sitemapEnabled is same as(false) ? false : true,
         value: 1,
+        fieldClass: 'width-50',
       }) }}
 
       {{ forms.lightswitchField({
@@ -85,6 +68,7 @@
         name: field.handle ~ '[sitemapIncludeImages]',
         on: value.sitemapIncludeImages is same as(true),
         value: 1,
+        fieldClass: 'width-50',
       }) }}
     </div>
   </div>
@@ -93,21 +77,11 @@
 {% js %}
   (function() {
     const container = document.getElementById('{{ seoFieldUid|e('js') }}');
-    if (!container) {
+    if (!container || typeof Garnish === 'undefined' || typeof Garnish.Tabs !== 'function') {
       return;
     }
 
-    const buttons = container.querySelectorAll('.seo-tab-btn');
-    const panels = container.querySelectorAll('.seo-tab-panel');
-    buttons.forEach((btn) => {
-      btn.addEventListener('click', () => {
-        const targetId = btn.getAttribute('data-target');
-        buttons.forEach((b) => b.classList.remove('active'));
-        btn.classList.add('active');
-        panels.forEach((panel) => {
-          panel.style.display = panel.id === targetId ? '' : 'none';
-        });
-      });
-    });
+    const tabLinks = container.querySelectorAll('.tabs .tab');
+    new Garnish.Tabs(tabLinks);
   })();
 {% endjs %}

@@ -1,0 +1,70 @@
+{% extends 'pragmatic-seo/_layout' %}
+{% import "_includes/forms" as forms %}
+
+{% set title = 'Imagenes' %}
+{% set selectedTab = 'images' %}
+
+{% block content %}
+  <form method="get" action="{{ url('pragmatic-seo/images') }}" accept-charset="UTF-8" style="margin-bottom: 16px;">
+    <label style="display: inline-flex; gap: 8px; align-items: center;">
+      <input type="checkbox" name="used" value="1" {% if usedOnly %}checked{% endif %}>
+      Mostrar solo imagenes usadas
+    </label>
+    <button type="submit" class="btn">Filtrar</button>
+  </form>
+
+  <form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    {{ actionInput('pragmatic-seo/default/save-images') }}
+    {{ redirectInput(url('pragmatic-seo/images', usedOnly ? { used: 1 } : {})) }}
+
+    {% if rows is empty %}
+      <p>No hay imagenes para mostrar con el filtro actual.</p>
+    {% else %}
+      <table class="data fullwidth">
+        <thead>
+          <tr>
+            <th>Usado</th>
+            <th>Asset</th>
+            <th>Titulo</th>
+            <th>Alt text</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+            {% set asset = row.asset %}
+            <tr>
+              <td>
+                {% if row.isUsed %}
+                  <span class="status enabled"></span>Si
+                {% else %}
+                  <span class="status"></span>No
+                {% endif %}
+              </td>
+              <td>
+                <strong>{{ asset.filename }}</strong><br>
+                <code>ID {{ asset.id }}</code>
+              </td>
+              <td>
+                {{ forms.text({
+                  name: "assets[#{asset.id}][title]",
+                  value: asset.title,
+                }) }}
+              </td>
+              <td>
+                {{ forms.text({
+                  name: "assets[#{asset.id}][altText]",
+                  value: row.altText,
+                }) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="buttons" style="margin-top: 16px;">
+        <button type="submit" class="btn submit">Guardar</button>
+      </div>
+    {% endif %}
+  </form>
+{% endblock %}

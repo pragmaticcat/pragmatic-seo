@@ -1,0 +1,27 @@
+{% import "_includes/forms" as forms %}
+
+{{ forms.textField({
+  label: 'Titulo por defecto',
+  name: 'defaultTitle',
+  value: field.defaultTitle,
+}) }}
+
+{{ forms.textareaField({
+  label: 'Descripcion por defecto',
+  name: 'defaultDescription',
+  value: field.defaultDescription,
+  rows: 3,
+}) }}
+
+{{ forms.textField({
+  type: 'number',
+  label: 'Imagen por defecto (Asset ID)',
+  name: 'defaultImageId',
+  value: field.defaultImageId,
+}) }}
+
+{{ forms.textField({
+  label: 'Descripcion de imagen por defecto',
+  name: 'defaultImageDescription',
+  value: field.defaultImageDescription,
+}) }}

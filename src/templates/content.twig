@@ -1,0 +1,69 @@
+{% extends 'pragmatic-seo/_layout' %}
+{% import "_includes/forms" as forms %}
+
+{% set title = 'Contenido' %}
+{% set selectedTab = 'content' %}
+
+{% block content %}
+  <form method="post" accept-charset="UTF-8">
+    {{ csrfInput() }}
+    {{ actionInput('pragmatic-seo/default/save-content') }}
+
+    {% if seoFields is empty %}
+      <p>No hay fields de tipo SEO todavía.</p>
+    {% else %}
+      <table class="data fullwidth">
+        <thead>
+          <tr>
+            <th>Field</th>
+            <th>Titulo</th>
+            <th>Descripcion</th>
+            <th>Imagen (Asset ID)</th>
+            <th>Descripcion de imagen</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for seoField in seoFields %}
+            <tr>
+              <td>
+                <strong>{{ seoField.name }}</strong><br>
+                <code>{{ seoField.handle }}</code>
+              </td>
+              <td>
+                {{ forms.text({
+                  name: "fields[#{seoField.id}][title]",
+                  value: seoField.defaultTitle,
+                }) }}
+              </td>
+              <td>
+                {{ forms.textarea({
+                  name: "fields[#{seoField.id}][description]",
+                  value: seoField.defaultDescription,
+                  rows: 2,
+                }) }}
+              </td>
+              <td>
+                {{ forms.text({
+                  type: 'number',
+                  name: "fields[#{seoField.id}][imageId]",
+                  value: seoField.defaultImageId,
+                  placeholder: 'ID',
+                }) }}
+              </td>
+              <td>
+                {{ forms.text({
+                  name: "fields[#{seoField.id}][imageDescription]",
+                  value: seoField.defaultImageDescription,
+                }) }}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+
+      <div class="buttons" style="margin-top: 16px;">
+        <button type="submit" class="btn submit">Guardar</button>
+      </div>
+    {% endif %}
+  </form>
+{% endblock %}

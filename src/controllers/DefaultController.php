@@ -6,9 +6,12 @@ use Craft;
 use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\elements\Asset;
+use craft\elements\Entry;
 use craft\fields\PlainText;
 use craft\web\Controller;
 use pragmatic\seo\fields\SeoField;
+use pragmatic\seo\fields\SeoFieldValue;
+use yii\web\BadRequestHttpException;
 use yii\web\Response;
 
 class DefaultController extends Controller
@@ -35,7 +38,8 @@ class DefaultController extends Controller
     {
         $this->cleanupLegacyAssetMetaTable();
         $request = Craft::$app->getRequest();
-        $usedOnly = $request->getQueryParam('used', '1') === '1';
+        $usedParam = $request->getQueryParam('used');
+        $usedOnly = $usedParam === null ? true : $usedParam === '1';
         $page = max(1, (int)$request->getQueryParam('page', 1));
         $allowedPerPage = [50, 100, 250];
         $perPage = (int)$request->getQueryParam('perPage', 50);
@@ -102,38 +106,123 @@ class DefaultController extends Controller
 
     public function actionContent(): Response
     {
-        $seoFields = array_values(array_filter(
-            Craft::$app->getFields()->getAllFields(),
-            fn($field) => $field instanceof SeoField
-        ));
+        $request = Craft::$app->getRequest();
+        $search = (string)$request->getParam('q', '');
+        $sectionId = (int)$request->getParam('section', 0);
+        $fieldFilter = (string)$request->getParam('field', '');
+        $page = max(1, (int)$request->getParam('page', 1));
+        $perPage = (int)$request->getParam('perPage', 50);
+        if (!in_array($perPage, [50, 100, 250], true)) {
+            $perPage = 50;
+        }
+
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $entryQuery = Entry::find()->siteId($siteId)->status(null);
+        if ($sectionId) {
+            $entryQuery->sectionId($sectionId);
+        }
+        if ($search !== '') {
+            $entryQuery->search($search);
+        }
+
+        $entries = $entryQuery->all();
+        $rows = [];
+        foreach ($entries as $entry) {
+            foreach ($entry->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+                if (!$field instanceof SeoField) {
+                    continue;
+                }
+                if ($fieldFilter !== '' && $field->handle !== $fieldFilter) {
+                    continue;
+                }
+
+                $value = $entry->getFieldValue($field->handle);
+                if (!$value instanceof SeoFieldValue) {
+                    $value = $field->normalizeValue($value, $entry);
+                }
+
+                $rows[] = [
+                    'entry' => $entry,
+                    'fieldHandle' => $field->handle,
+                    'fieldLabel' => $field->name,
+                    'value' => $value instanceof SeoFieldValue ? $value : new SeoFieldValue(),
+                ];
+            }
+        }
+
+        $total = count($rows);
+        $totalPages = max(1, (int)ceil($total / $perPage));
+        if ($page > $totalPages) {
+            $page = $totalPages;
+        }
+        $offset = ($page - 1) * $perPage;
+        $pageRows = array_slice($rows, $offset, $perPage);
+
+        $entryRowCounts = [];
+        foreach ($pageRows as $row) {
+            $entryId = $row['entry']->id;
+            $entryRowCounts[$entryId] = ($entryRowCounts[$entryId] ?? 0) + 1;
+        }
 
         return $this->renderTemplate('pragmatic-seo/content', [
-            'seoFields' => $seoFields,
+            'rows' => $pageRows,
+            'entryRowCounts' => $entryRowCounts,
+            'sections' => Craft::$app->entries->getAllSections(),
+            'sectionId' => $sectionId,
+            'fieldFilter' => $fieldFilter,
+            'fieldOptions' => $this->getSeoFieldOptions(),
+            'search' => $search,
+            'perPage' => $perPage,
+            'page' => $page,
+            'totalPages' => $totalPages,
+            'total' => $total,
         ]);
     }
 
     public function actionSaveContent(): Response
     {
         $this->requirePostRequest();
-        $fieldsData = Craft::$app->getRequest()->getBodyParam('fields', []);
-        $fieldsService = Craft::$app->getFields();
-
-        foreach ($fieldsData as $fieldId => $data) {
-            $field = $fieldsService->getFieldById((int)$fieldId);
-            if (!$field instanceof SeoField) {
-                continue;
-            }
-
-            $field->defaultTitle = trim((string)($data['title'] ?? ''));
-            $field->defaultDescription = trim((string)($data['description'] ?? ''));
-            $field->defaultImageId = !empty($data['imageId']) ? (int)$data['imageId'] : null;
-            $field->defaultImageDescription = trim((string)($data['imageDescription'] ?? ''));
-
-            $fieldsService->saveField($field);
+        $saveRow = Craft::$app->getRequest()->getBodyParam('saveRow');
+        $entries = Craft::$app->getRequest()->getBodyParam('entries', []);
+        if ($saveRow === null || !isset($entries[$saveRow])) {
+            throw new BadRequestHttpException('Invalid entry payload.');
         }
 
+        $row = $entries[$saveRow];
+        $entryId = (int)($row['entryId'] ?? 0);
+        $fieldHandle = (string)($row['fieldHandle'] ?? '');
+        $values = (array)($row['values'] ?? []);
+        if (!$entryId || $fieldHandle === '') {
+            throw new BadRequestHttpException('Missing entry data.');
+        }
+
+        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $entry = Craft::$app->getElements()->getElementById($entryId, Entry::class, $siteId);
+        if (!$entry) {
+            throw new BadRequestHttpException('Entry not found.');
+        }
+
+        $isSeoFieldOnEntry = false;
+        foreach ($entry->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+            if ($field instanceof SeoField && $field->handle === $fieldHandle) {
+                $isSeoFieldOnEntry = true;
+                break;
+            }
+        }
+        if (!$isSeoFieldOnEntry) {
+            throw new BadRequestHttpException('Invalid SEO field for this entry.');
+        }
+
+        $entry->setFieldValue($fieldHandle, [
+            'title' => trim((string)($values['title'] ?? '')),
+            'description' => trim((string)($values['description'] ?? '')),
+            'imageId' => ($values['imageId'] ?? '') !== '' ? (int)$values['imageId'] : null,
+            'imageDescription' => trim((string)($values['imageDescription'] ?? '')),
+        ]);
+
+        Craft::$app->getElements()->saveElement($entry, false, false);
         Craft::$app->getSession()->setNotice('Contenido SEO guardado.');
-        return $this->redirect('pragmatic-seo/content');
+        return $this->redirectToPostedUrl();
     }
 
     public function actionSaveImages(): Response
@@ -257,5 +346,27 @@ class DefaultController extends Controller
         }
 
         $db->createCommand()->dropTable(self::LEGACY_ASSET_META_TABLE)->execute();
+    }
+
+    private function getSeoFieldOptions(): array
+    {
+        $options = [
+            ['value' => '', 'label' => 'All SEO fields'],
+        ];
+
+        $fields = array_values(array_filter(
+            Craft::$app->getFields()->getAllFields(),
+            fn($field) => $field instanceof SeoField
+        ));
+        usort($fields, fn(SeoField $a, SeoField $b) => strcasecmp($a->name, $b->name));
+
+        foreach ($fields as $field) {
+            $options[] = [
+                'value' => $field->handle,
+                'label' => sprintf('%s (%s)', $field->name, $field->handle),
+            ];
+        }
+
+        return $options;
     }
 }

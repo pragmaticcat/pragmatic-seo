@@ -7,6 +7,7 @@
 {% block content %}
   <form id="images-filter-form" method="get" action="{{ url('pragmatic-seo/images') }}" accept-charset="UTF-8" style="margin-bottom: 16px;">
     <input type="hidden" name="page" value="1">
+    <input type="hidden" name="used" value="0">
     <div class="flex" style="gap: 12px; align-items: flex-end;">
       {{ forms.lightswitchField({
         id: 'used-only',
@@ -117,7 +118,7 @@
 
 {% js %}
   const imagesFilterForm = document.getElementById('images-filter-form');
-  const usedOnlySwitch = imagesFilterForm?.querySelector('input[type="checkbox"][name="used"]');
+  const usedOnlySwitch = imagesFilterForm?.querySelector('#used-only') || imagesFilterForm?.querySelector('input[type="checkbox"][name="used"]');
   const perPageSelect = imagesFilterForm?.querySelector('select[name="perPage"]');
   const pageInput = imagesFilterForm?.querySelector('input[name="page"]');
   if (imagesFilterForm && usedOnlySwitch) {

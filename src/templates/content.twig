@@ -5,65 +5,165 @@
 {% set selectedTab = 'content' %}
 
 {% block content %}
+  {% css %}
+    tr.entry-group-border > td { border-top: 2px solid #d1d5db; }
+  {% endcss %}
+
+  <div class="flex" style="margin-top: 12px; gap: 16px; align-items: flex-end; justify-content: space-between;">
+    <form method="get" id="entries-filter" class="flex" style="gap: 12px; align-items: flex-end;">
+      <input type="hidden" name="page" value="1">
+      <div>
+        <label for="q">Search</label>
+        <input class="text" type="text" id="q" name="q" value="{{ search }}" placeholder="Entry title">
+      </div>
+      <div>
+        <label for="section">Section</label>
+        <div class="select">
+          <select id="section" name="section">
+            <option value="">All</option>
+            {% for section in sections %}
+              <option value="{{ section.id }}" {{ section.id == sectionId ? 'selected' : '' }}>{{ section.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="field">Field</label>
+        <div class="select">
+          <select id="field" name="field">
+            {% for option in fieldOptions %}
+              <option value="{{ option.value }}" {{ option.value == fieldFilter ? 'selected' : '' }}>{{ option.label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div>
+        <label for="perPage">Per page</label>
+        <div class="select">
+          <select id="perPage" name="perPage">
+            {% for option in [50, 100, 250] %}
+              <option value="{{ option }}" {{ option == perPage ? 'selected' : '' }}>{{ option }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+    </form>
+  </div>
+
   <form method="post" accept-charset="UTF-8">
     {{ csrfInput() }}
     {{ actionInput('pragmatic-seo/default/save-content') }}
+    {{ redirectInput('pragmatic-seo/content', { q: search, perPage: perPage, page: page, section: sectionId, field: fieldFilter }) }}
 
-    {% if seoFields is empty %}
-      <p>No hay fields de tipo SEO todavía.</p>
-    {% else %}
-      <table class="data fullwidth">
-        <thead>
-          <tr>
-            <th>Field</th>
-            <th>Titulo</th>
-            <th>Descripcion</th>
-            <th>Imagen (Asset ID)</th>
-            <th>Descripcion de imagen</th>
+    <table class="data fullwidth" style="margin-top: 16px;">
+      <thead>
+        <tr>
+          <th>Entry</th>
+          <th>Field</th>
+          <th>Titulo</th>
+          <th>Descripcion</th>
+          <th>Imagen (Asset ID)</th>
+          <th>Descripcion de imagen</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% set rowIndex = loop.index0 %}
+          {% set entryId = row.entry.id %}
+          {% set prevEntryId = loop.first ? null : rows[loop.index0 - 1].entry.id %}
+          {% set isFirstOfGroup = entryId != prevEntryId %}
+          <tr{{ isFirstOfGroup and not loop.first ? ' class="entry-group-border"' : '' }} data-entry-id="{{ entryId }}">
+            {% if isFirstOfGroup %}
+              <td rowspan="{{ entryRowCounts[entryId] }}" style="vertical-align: top;">
+                <a href="#" class="js-entry-slideout" data-entry-id="{{ entryId }}">{{ row.entry.title|default('Entry #' ~ entryId) }}</a>
+                <div class="light">{{ row.entry.section.name ?? row.entry.type.name ?? 'No section or type' }}</div>
+              </td>
+            {% endif %}
+            <td>
+              <input type="hidden" name="entries[{{ rowIndex }}][entryId]" value="{{ entryId }}">
+              <input type="hidden" name="entries[{{ rowIndex }}][fieldHandle]" value="{{ row.fieldHandle }}">
+              <div>{{ row.fieldLabel }}</div>
+              <div class="light">{{ row.fieldHandle }}</div>
+            </td>
+            <td>
+              <input class="text fullwidth" name="entries[{{ rowIndex }}][values][title]" value="{{ row.value.title ?? '' }}">
+            </td>
+            <td>
+              <textarea class="text fullwidth" name="entries[{{ rowIndex }}][values][description]" rows="2">{{ row.value.description ?? '' }}</textarea>
+            </td>
+            <td>
+              <input class="text fullwidth" type="number" name="entries[{{ rowIndex }}][values][imageId]" value="{{ row.value.imageId ?? '' }}">
+            </td>
+            <td>
+              <input class="text fullwidth" name="entries[{{ rowIndex }}][values][imageDescription]" value="{{ row.value.imageDescription ?? '' }}">
+            </td>
+            <td style="white-space: nowrap;">
+              <button class="btn submit" type="submit" name="saveRow" value="{{ rowIndex }}">Guardar fila</button>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {% for seoField in seoFields %}
-            <tr>
-              <td>
-                <strong>{{ seoField.name }}</strong><br>
-                <code>{{ seoField.handle }}</code>
-              </td>
-              <td>
-                {{ forms.text({
-                  name: "fields[#{seoField.id}][title]",
-                  value: seoField.defaultTitle,
-                }) }}
-              </td>
-              <td>
-                {{ forms.textarea({
-                  name: "fields[#{seoField.id}][description]",
-                  value: seoField.defaultDescription,
-                  rows: 2,
-                }) }}
-              </td>
-              <td>
-                {{ forms.text({
-                  type: 'number',
-                  name: "fields[#{seoField.id}][imageId]",
-                  value: seoField.defaultImageId,
-                  placeholder: 'ID',
-                }) }}
-              </td>
-              <td>
-                {{ forms.text({
-                  name: "fields[#{seoField.id}][imageDescription]",
-                  value: seoField.defaultImageDescription,
-                }) }}
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-
-      <div class="buttons" style="margin-top: 16px;">
-        <button type="submit" class="btn submit">Guardar</button>
-      </div>
-    {% endif %}
+        {% endfor %}
+      </tbody>
+    </table>
   </form>
+
+  <div class="flex justify-between align-center" style="margin-top: 16px;">
+    <div>{{ total }} total</div>
+    <div class="flex" style="gap: 8px; align-items: center;">
+      {% set prevPage = page > 1 ? page - 1 : 1 %}
+      {% set nextPage = page < totalPages ? page + 1 : totalPages %}
+      {% if page == 1 %}
+        <span class="btn disabled">Prev</span>
+      {% else %}
+        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: prevPage, section: sectionId, field: fieldFilter }) }}">Prev</a>
+      {% endif %}
+      <div>Page {{ page }} / {{ totalPages }}</div>
+      {% if page == totalPages %}
+        <span class="btn disabled">Next</span>
+      {% else %}
+        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: nextPage, section: sectionId, field: fieldFilter }) }}">Next</a>
+      {% endif %}
+    </div>
+  </div>
+
+  {% js %}
+    (function() {
+      const filterForm = document.getElementById('entries-filter');
+      const searchInput = document.getElementById('q');
+      const sectionSelect = document.getElementById('section');
+      const fieldSelect = document.getElementById('field');
+      const perPageSelect = document.getElementById('perPage');
+
+      if (filterForm) {
+        const pageInput = filterForm.querySelector('input[name="page"]');
+        function resetPageAndSubmit() {
+          if (pageInput) pageInput.value = '1';
+          filterForm.submit();
+        }
+
+        let searchTimer = null;
+        if (searchInput) {
+          searchInput.addEventListener('input', function() {
+            if (searchTimer) clearTimeout(searchTimer);
+            searchTimer = setTimeout(resetPageAndSubmit, 300);
+          });
+        }
+        [sectionSelect, fieldSelect, perPageSelect].forEach(function(el) {
+          if (el) el.addEventListener('change', resetPageAndSubmit);
+        });
+      }
+
+      document.querySelectorAll('.js-entry-slideout').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          const entryId = parseInt(link.getAttribute('data-entry-id'), 10);
+          if (!entryId || !window.Craft) return;
+          Craft.createElementEditor('craft\\elements\\Entry', {
+            elementId: entryId,
+            slideout: true
+          });
+        });
+      });
+    })();
+  {% endjs %}
 {% endblock %}

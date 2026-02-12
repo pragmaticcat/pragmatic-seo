@@ -5,75 +5,114 @@
 {% set selectedTab = 'images' %}
 
 {% block content %}
-  <form method="get" action="{{ url('pragmatic-seo/images') }}" accept-charset="UTF-8" style="margin-bottom: 16px;">
-    <label style="display: inline-flex; gap: 8px; align-items: center;">
-      <input type="checkbox" name="used" value="1" {% if usedOnly %}checked{% endif %}>
-      Mostrar solo imagenes usadas
-    </label>
-    <button type="submit" class="btn">Filtrar</button>
+  <form id="images-filter-form" method="get" action="{{ url('pragmatic-seo/images') }}" accept-charset="UTF-8" style="margin-bottom: 16px;">
+    {{ forms.lightswitchField({
+      id: 'used-only',
+      name: 'used',
+      on: usedOnly,
+      value: 1,
+      label: 'Mostrar solo imagenes usadas',
+    }) }}
   </form>
 
-  <form method="post" accept-charset="UTF-8">
-    {{ csrfInput() }}
-    {{ actionInput('pragmatic-seo/default/save-images') }}
-    {{ redirectInput(url('pragmatic-seo/images', usedOnly ? { used: 1 } : {})) }}
-
-    {% if rows is empty %}
-      <p>No hay imagenes para mostrar con el filtro actual.</p>
-    {% else %}
-      <table class="data fullwidth">
-        <thead>
+  {% if rows is empty %}
+    <p>No hay imagenes para mostrar con el filtro actual.</p>
+  {% else %}
+    <table class="data fullwidth">
+      <thead>
+        <tr>
+          <th>Usado</th>
+          <th>Asset</th>
+          <th>Titulo</th>
+          {% for column in textColumns %}
+            <th>{{ column.name }}</th>
+          {% endfor %}
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          {% set asset = row.asset %}
+          {% set rowFormId = 'save-asset-' ~ asset.id %}
           <tr>
-            <th>Usado</th>
-            <th>Asset</th>
-            <th>Titulo</th>
+            <td>
+              {% if row.isUsed %}
+                <span class="status enabled"></span>Si
+              {% else %}
+                <span class="status"></span>No
+              {% endif %}
+            </td>
+            <td>
+              <a href="{{ asset.cpEditUrl }}" class="js-open-asset" data-asset-id="{{ asset.id }}" data-site-id="{{ asset.siteId }}">{{ asset.filename }}</a><br>
+              <code>ID {{ asset.id }}</code>
+            </td>
+            <td>
+              {{ forms.text({
+                form: rowFormId,
+                name: "assets[#{asset.id}][title]",
+                value: asset.title,
+              }) }}
+            </td>
             {% for column in textColumns %}
-              <th>{{ column.name }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-          {% for row in rows %}
-            {% set asset = row.asset %}
-            <tr>
+              {% set value = row.fieldValues[column.handle] ?? null %}
               <td>
-                {% if row.isUsed %}
-                  <span class="status enabled"></span>Si
+                {% if value is same as(null) %}
+                  <span class="light">-</span>
                 {% else %}
-                  <span class="status"></span>No
+                  {{ forms.text({
+                    form: rowFormId,
+                    name: "assets[#{asset.id}][fields][#{column.handle}]",
+                    value: value,
+                  }) }}
                 {% endif %}
               </td>
-              <td>
-                <strong>{{ asset.filename }}</strong><br>
-                <code>ID {{ asset.id }}</code>
-              </td>
-              <td>
-                {{ forms.text({
-                  name: "assets[#{asset.id}][title]",
-                  value: asset.title,
-                }) }}
-              </td>
-              {% for column in textColumns %}
-                {% set value = row.fieldValues[column.handle] ?? null %}
-                <td>
-                  {% if value is same as(null) %}
-                    <span class="light">-</span>
-                  {% else %}
-                    {{ forms.text({
-                      name: "assets[#{asset.id}][fields][#{column.handle}]",
-                      value: value,
-                    }) }}
-                  {% endif %}
-                </td>
-              {% endfor %}
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+            {% endfor %}
+            <td>
+              <button type="submit" class="btn submit" form="{{ rowFormId }}" name="saveRowId" value="{{ asset.id }}">Guardar fila</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
 
-      <div class="buttons" style="margin-top: 16px;">
-        <button type="submit" class="btn submit">Guardar</button>
-      </div>
-    {% endif %}
-  </form>
+    {% for row in rows %}
+      {% set asset = row.asset %}
+      {% set rowFormId = 'save-asset-' ~ asset.id %}
+      <form id="{{ rowFormId }}" method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        {{ actionInput('pragmatic-seo/default/save-images') }}
+        {{ redirectInput(url('pragmatic-seo/images', usedOnly ? { used: 1 } : {})) }}
+      </form>
+    {% endfor %}
+  {% endif %}
 {% endblock %}
+
+{% js %}
+  const imagesFilterForm = document.getElementById('images-filter-form');
+  const usedOnlySwitch = imagesFilterForm?.querySelector('input[type="checkbox"][name="used"]');
+  if (imagesFilterForm && usedOnlySwitch) {
+    usedOnlySwitch.addEventListener('change', () => {
+      imagesFilterForm.submit();
+    });
+  }
+
+  document.querySelectorAll('.js-open-asset').forEach((link) => {
+    link.addEventListener('click', (event) => {
+      if (typeof Craft === 'undefined' || typeof Craft.createElementEditor !== 'function') {
+        return;
+      }
+
+      event.preventDefault();
+      const assetId = parseInt(link.dataset.assetId || '0', 10);
+      const siteId = parseInt(link.dataset.siteId || '0', 10);
+      if (!assetId || !siteId) {
+        return;
+      }
+
+      Craft.createElementEditor('craft\\elements\\Asset', $(link), {
+        elementId: assetId,
+        siteId: siteId,
+      });
+    });
+  });
+{% endjs %}

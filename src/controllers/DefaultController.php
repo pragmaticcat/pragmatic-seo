@@ -34,7 +34,7 @@ class DefaultController extends Controller
     public function actionImages(): Response
     {
         $this->cleanupLegacyAssetMetaTable();
-        $usedOnly = Craft::$app->getRequest()->getQueryParam('used') === '1';
+        $usedOnly = Craft::$app->getRequest()->getQueryParam('used', '1') === '1';
 
         $assets = Asset::find()
             ->kind('image')
@@ -119,6 +119,10 @@ class DefaultController extends Controller
         $this->cleanupLegacyAssetMetaTable();
 
         $assetsData = Craft::$app->getRequest()->getBodyParam('assets', []);
+        $saveRowId = (int)Craft::$app->getRequest()->getBodyParam('saveRowId', 0);
+        if ($saveRowId > 0) {
+            $assetsData = isset($assetsData[$saveRowId]) ? [$saveRowId => $assetsData[$saveRowId]] : [];
+        }
         $elements = Craft::$app->getElements();
 
         foreach ($assetsData as $assetId => $data) {
@@ -181,7 +185,16 @@ class DefaultController extends Controller
             }
         }
 
-        ksort($columns);
+        uasort($columns, function(array $a, array $b): int {
+            $aIsAlt = $this->isAltColumn($a);
+            $bIsAlt = $this->isAltColumn($b);
+            if ($aIsAlt !== $bIsAlt) {
+                return $aIsAlt ? -1 : 1;
+            }
+
+            return strcasecmp($a['name'], $b['name']);
+        });
+
         return $columns;
     }
 
@@ -203,6 +216,14 @@ class DefaultController extends Controller
         }
 
         return strtolower(get_class($field)) === 'craft\\ckeditor\\field';
+    }
+
+    private function isAltColumn(array $column): bool
+    {
+        $handle = strtolower((string)($column['handle'] ?? ''));
+        $name = strtolower((string)($column['name'] ?? ''));
+
+        return str_contains($handle, 'alt') || str_contains($name, 'alt');
     }
 
     private function cleanupLegacyAssetMetaTable(): void

@@ -13,10 +13,12 @@ Craft CMS 5 plugin scaffold for a Pragmatic SEO control panel section, with a tw
 - `descripcion de imagen`
 - `Contenido` view with inline-edit table for all `SEO` fields created, plus save button
 - `Imagenes` view with inline-edit table for all image assets:
+- filename links open the native Craft asset offcanvas editor
 - editable `titulo`
 - editable custom text fields on assets (`PlainText` / `CKEditor`)
 - usage indicator per row (`usado` / `no usado`)
 - filter to show only used assets
+- row-by-row save (`Guardar fila`)
 - Base Twig layout for SEO pages: `pragmatic-seo/_layout`
 - Plugin registered as `pragmatic-seo` for Craft CMS 5 projects
 

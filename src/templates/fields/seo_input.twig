@@ -1,43 +1,86 @@
 {% import "_includes/forms" as forms %}
 
-{{ forms.textField({
-  label: 'Titulo',
-  name: field.handle ~ '[title]',
-  value: value.title,
-}) }}
+{% set seoFieldUid = field.handle ~ '-seo-tabs' %}
 
-{{ forms.textareaField({
-  label: 'Descripcion',
-  name: field.handle ~ '[description]',
-  value: value.description,
-  rows: 3,
-}) }}
+{% css %}
+  .seo-tabs-wrap .seo-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
 
-{{ forms.elementSelectField({
-  label: 'Imagen',
-  id: field.handle ~ '-image',
-  name: field.handle ~ '[imageId]',
-  elementType: 'craft\\\\elements\\\\Asset',
-  elements: imageElement ? [imageElement] : [],
-  limit: 1,
-}) }}
+  @media (max-width: 900px) {
+    .seo-tabs-wrap .seo-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+{% endcss %}
 
-{{ forms.textField({
-  label: 'Descripcion de imagen',
-  name: field.handle ~ '[imageDescription]',
-  value: value.imageDescription,
-}) }}
+<div id="{{ seoFieldUid }}" class="seo-tabs-wrap">
+  <div class="tabs">
+    <a class="tab sel" href="#{{ seoFieldUid }}-general">General</a>
+    <a class="tab" href="#{{ seoFieldUid }}-options">Opciones</a>
+  </div>
 
-{{ forms.lightswitchField({
-  label: 'Sitemap: visible',
-  name: field.handle ~ '[sitemapEnabled]',
-  on: value.sitemapEnabled is same as(false) ? false : true,
-  value: 1,
-}) }}
+  <div id="{{ seoFieldUid }}-general">
+    <div class="seo-grid">
+      {{ forms.textField({
+        label: 'Titulo',
+        name: field.handle ~ '[title]',
+        value: value.title,
+      }) }}
 
-{{ forms.lightswitchField({
-  label: 'Sitemap: incluir imagenes',
-  name: field.handle ~ '[sitemapIncludeImages]',
-  on: value.sitemapIncludeImages is same as(true),
-  value: 1,
-}) }}
+      {{ forms.textareaField({
+        label: 'Descripcion',
+        name: field.handle ~ '[description]',
+        value: value.description,
+        rows: 3,
+      }) }}
+
+      {{ forms.elementSelectField({
+        label: 'Imagen',
+        id: field.handle ~ '-image',
+        name: field.handle ~ '[imageId]',
+        elementType: 'craft\\\\elements\\\\Asset',
+        elements: imageElement ? [imageElement] : [],
+        limit: 1,
+      }) }}
+
+      {{ forms.textareaField({
+        label: 'Descripcion de imagen',
+        name: field.handle ~ '[imageDescription]',
+        value: value.imageDescription,
+        rows: 3,
+      }) }}
+    </div>
+  </div>
+
+  <div id="{{ seoFieldUid }}-options" class="hidden">
+    <div class="seo-grid">
+      {{ forms.lightswitchField({
+        label: 'Sitemap: visible',
+        name: field.handle ~ '[sitemapEnabled]',
+        on: value.sitemapEnabled is same as(false) ? false : true,
+        value: 1,
+      }) }}
+
+      {{ forms.lightswitchField({
+        label: 'Sitemap: incluir imagenes',
+        name: field.handle ~ '[sitemapIncludeImages]',
+        on: value.sitemapIncludeImages is same as(true),
+        value: 1,
+      }) }}
+    </div>
+  </div>
+</div>
+
+{% js %}
+  (function() {
+    const container = document.getElementById('{{ seoFieldUid|e('js') }}');
+    if (!container || typeof Garnish === 'undefined' || typeof Garnish.Tabs !== 'function') {
+      return;
+    }
+
+    new Garnish.Tabs(container.querySelectorAll('.tabs .tab'));
+  })();
+{% endjs %}

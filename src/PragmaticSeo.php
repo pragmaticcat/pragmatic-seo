@@ -80,7 +80,7 @@ class PragmaticSeo extends Plugin
                 if ($groupKey === null) {
                     $newItem = [
                         'label' => $toolsLabel,
-                        'url' => 'pragmatic-seo/content',
+                        'url' => 'pragmatic-seo',
                         'icon' => __DIR__ . '/icons/icon.svg',
                         'subnav' => [],
                     ];

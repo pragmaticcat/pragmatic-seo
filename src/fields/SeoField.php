@@ -200,7 +200,7 @@ class SeoField extends Field
             'sitemapIncludeImages' => Schema::TYPE_BOOLEAN,
             'dateCreated' => Schema::TYPE_DATETIME . ' NOT NULL',
             'dateUpdated' => Schema::TYPE_DATETIME . ' NOT NULL',
-            'uid' => Schema::TYPE_UID . ' NOT NULL',
+            'uid' => 'char(36) NOT NULL',
         ])->execute();
 
         $db->createCommand()->createIndex(

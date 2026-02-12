@@ -1,7 +1,12 @@
 {% extends 'pragmatic-seo/_layout' %}
 
-{% set title = 'General' %}
+{% set title = 'General'|t('pragmatic-seo') %}
 {% set selectedTab = 'general' %}
+
+{% set crumbs = [
+  { label: 'SEO', url: url('pragmatic-seo') },
+  { label: 'General'|t('pragmatic-seo'), url: url('pragmatic-seo/general') },
+] %}
 
 {% block content %}
 {% endblock %}

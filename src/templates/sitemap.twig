@@ -1,8 +1,13 @@
 {% extends 'pragmatic-seo/_layout' %}
 {% import "_includes/forms" as forms %}
 
-{% set title = 'Sitemap' %}
+{% set title = 'Sitemap'|t('pragmatic-seo') %}
 {% set selectedTab = 'sitemap' %}
+
+{% set crumbs = [
+  { label: 'SEO', url: url('pragmatic-seo') },
+  { label: 'Sitemap'|t('pragmatic-seo'), url: url('pragmatic-seo/sitemap') },
+] %}
 
 {% block content %}
   <form method="post" accept-charset="UTF-8">
@@ -11,14 +16,14 @@
     {{ redirectInput('pragmatic-seo/sitemap') }}
 
     {% if entryTypeRows is empty %}
-      <p>No hay entry types con un field SEO en su layout.</p>
+      <p>{{ 'No entry types with an SEO field in their layout.'|t('pragmatic-seo') }}</p>
     {% else %}
       <table class="data fullwidth">
         <thead>
           <tr>
-            <th>Entry Type</th>
-            <th>Visible en sitemap</th>
-            <th>Incluir imagenes</th>
+            <th>{{ 'Entry Type'|t('pragmatic-seo') }}</th>
+            <th>{{ 'Visible in sitemap'|t('pragmatic-seo') }}</th>
+            <th>{{ 'Include images'|t('pragmatic-seo') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -32,9 +37,9 @@
                     <table class="data fullwidth">
                       <thead>
                         <tr>
-                          <th>Entry</th>
-                          <th>Visible en sitemap</th>
-                          <th>Incluir imagenes</th>
+                          <th>{{ 'Entry'|t('pragmatic-seo') }}</th>
+                          <th>{{ 'Visible in sitemap'|t('pragmatic-seo') }}</th>
+                          <th>{{ 'Include images'|t('pragmatic-seo') }}</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -90,7 +95,7 @@
       </table>
 
       <div class="buttons" style="margin-top: 16px;">
-        <button type="submit" class="btn submit">Guardar</button>
+        <button type="submit" class="btn submit">{{ 'Save'|t('pragmatic-seo') }}</button>
       </div>
     {% endif %}
   </form>

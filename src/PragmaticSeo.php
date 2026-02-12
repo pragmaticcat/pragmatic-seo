@@ -113,7 +113,7 @@ class PragmaticSeo extends Plugin
 
                 $event->navItems[$groupKey]['subnav']['seo'] = [
                     'label' => 'SEO',
-                    'url' => 'pragmatic-seo/content',
+                    'url' => 'pragmatic-seo',
                 ];
 
                 $path = Craft::$app->getRequest()->getPathInfo();

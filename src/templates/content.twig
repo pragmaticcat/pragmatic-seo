@@ -1,8 +1,13 @@
 {% extends 'pragmatic-seo/_layout' %}
 {% import "_includes/forms" as forms %}
 
-{% set title = 'Contenido' %}
+{% set title = 'Content'|t('pragmatic-seo') %}
 {% set selectedTab = 'content' %}
+
+{% set crumbs = [
+  { label: 'SEO', url: url('pragmatic-seo') },
+  { label: 'Content'|t('pragmatic-seo'), url: url('pragmatic-seo/content') },
+] %}
 
 {% block content %}
   {% css %}
@@ -13,14 +18,14 @@
     <form method="get" id="entries-filter" class="flex" style="gap: 12px; align-items: flex-end;">
       <input type="hidden" name="page" value="1">
       <div>
-        <label for="q">Search</label>
-        <input class="text" type="text" id="q" name="q" value="{{ search }}" placeholder="Entry title">
+        <label for="q">{{ 'Search'|t('pragmatic-seo') }}</label>
+        <input class="text" type="text" id="q" name="q" value="{{ search }}" placeholder="{{ 'Entry title'|t('pragmatic-seo') }}">
       </div>
       <div>
-        <label for="section">Section</label>
+        <label for="section">{{ 'Section'|t('pragmatic-seo') }}</label>
         <div class="select">
           <select id="section" name="section">
-            <option value="">All</option>
+            <option value="">{{ 'All'|t('pragmatic-seo') }}</option>
             {% for section in sections %}
               <option value="{{ section.id }}" {{ section.id == sectionId ? 'selected' : '' }}>{{ section.name }}</option>
             {% endfor %}
@@ -28,7 +33,7 @@
         </div>
       </div>
       <div>
-        <label for="perPage">Per page</label>
+        <label for="perPage">{{ 'Per page'|t('pragmatic-seo') }}</label>
         <div class="select">
           <select id="perPage" name="perPage">
             {% for option in [50, 100, 250] %}
@@ -48,12 +53,12 @@
     <table class="data fullwidth" style="margin-top: 16px;">
       <thead>
         <tr>
-          <th>Entry</th>
-          <th>Titulo</th>
-          <th>Descripcion</th>
-          <th>Imagen</th>
-          <th>Descripcion de imagen</th>
-          <th>Action</th>
+          <th>{{ 'Entry'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Title'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Description'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Image'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Image description'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Action'|t('pragmatic-seo') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -93,7 +98,7 @@
               <textarea class="text fullwidth" name="entries[{{ rowIndex }}][values][imageDescription]" rows="2">{{ row.value.imageDescription ?? '' }}</textarea>
             </td>
             <td style="white-space: nowrap;">
-              <button class="btn submit" type="submit" name="saveRow" value="{{ rowIndex }}">Guardar fila</button>
+              <button class="btn submit" type="submit" name="saveRow" value="{{ rowIndex }}">{{ 'Save row'|t('pragmatic-seo') }}</button>
             </td>
           </tr>
         {% endfor %}
@@ -102,20 +107,20 @@
   </form>
 
   <div class="flex justify-between align-center" style="margin-top: 16px;">
-    <div>{{ total }} total</div>
+    <div>{{ total }} {{ 'total'|t('pragmatic-seo') }}</div>
     <div class="flex" style="gap: 8px; align-items: center;">
       {% set prevPage = page > 1 ? page - 1 : 1 %}
       {% set nextPage = page < totalPages ? page + 1 : totalPages %}
       {% if page == 1 %}
-        <span class="btn disabled">Prev</span>
+        <span class="btn disabled">{{ 'Prev'|t('pragmatic-seo') }}</span>
       {% else %}
-        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: prevPage, section: sectionId }) }}">Prev</a>
+        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: prevPage, section: sectionId }) }}">{{ 'Prev'|t('pragmatic-seo') }}</a>
       {% endif %}
-      <div>Page {{ page }} / {{ totalPages }}</div>
+      <div>{{ 'Page'|t('pragmatic-seo') }} {{ page }} / {{ totalPages }}</div>
       {% if page == totalPages %}
-        <span class="btn disabled">Next</span>
+        <span class="btn disabled">{{ 'Next'|t('pragmatic-seo') }}</span>
       {% else %}
-        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: nextPage, section: sectionId }) }}">Next</a>
+        <a class="btn" href="{{ url('pragmatic-seo/content', { q: search, perPage: perPage, page: nextPage, section: sectionId }) }}">{{ 'Next'|t('pragmatic-seo') }}</a>
       {% endif %}
     </div>
   </div>

@@ -1,8 +1,13 @@
 {% extends 'pragmatic-seo/_layout' %}
 {% import "_includes/forms" as forms %}
 
-{% set title = 'Imagenes' %}
+{% set title = 'Images'|t('pragmatic-seo') %}
 {% set selectedTab = 'images' %}
+
+{% set crumbs = [
+  { label: 'SEO', url: url('pragmatic-seo') },
+  { label: 'Images'|t('pragmatic-seo'), url: url('pragmatic-seo/images') },
+] %}
 
 {% block content %}
   <form id="images-filter-form" method="get" action="{{ url('pragmatic-seo/images') }}" accept-charset="UTF-8" style="margin-bottom: 16px;">
@@ -14,10 +19,10 @@
         name: 'usedSwitch',
         on: usedOnly,
         value: 1,
-        label: 'Mostrar solo imagenes usadas',
+        label: 'Show only used images'|t('pragmatic-seo'),
       }) }}
       <div>
-        <label for="perPage">Per page</label>
+        <label for="perPage">{{ 'Per page'|t('pragmatic-seo') }}</label>
         <div class="select">
           <select id="perPage" name="perPage">
             {% for option in [50, 100, 250] %}
@@ -30,14 +35,14 @@
   </form>
 
   {% if rows is empty %}
-    <p>No hay imagenes para mostrar con el filtro actual.</p>
+    <p>{{ 'No images to show with the current filter.'|t('pragmatic-seo') }}</p>
   {% else %}
     <table class="data fullwidth">
       <thead>
         <tr>
-          <th>Usado</th>
-          <th>Asset</th>
-          <th>Titulo</th>
+          <th>{{ 'Used'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Asset'|t('pragmatic-seo') }}</th>
+          <th>{{ 'Title'|t('pragmatic-seo') }}</th>
           {% for column in textColumns %}
             <th>{{ column.name }}</th>
           {% endfor %}
@@ -51,9 +56,9 @@
           <tr>
             <td>
               {% if row.isUsed %}
-                <span class="status enabled"></span>Si
+                <span class="status enabled"></span>{{ 'Yes'|t('pragmatic-seo') }}
               {% else %}
-                <span class="status"></span>No
+                <span class="status"></span>{{ 'No'|t('pragmatic-seo') }}
               {% endif %}
             </td>
             <td>
@@ -89,7 +94,7 @@
               </td>
             {% endfor %}
             <td>
-              <button type="submit" class="btn submit" form="{{ rowFormId }}" name="saveRowId" value="{{ asset.id }}">Guardar fila</button>
+              <button type="submit" class="btn submit" form="{{ rowFormId }}" name="saveRowId" value="{{ asset.id }}">{{ 'Save row'|t('pragmatic-seo') }}</button>
             </td>
           </tr>
         {% endfor %}
@@ -111,13 +116,13 @@
     {% endfor %}
 
     <div class="flex justify-between align-center" style="margin-top: 16px;">
-      <div>{{ total }} total</div>
+      <div>{{ total }} {{ 'total'|t('pragmatic-seo') }}</div>
       <div class="flex" style="gap: 8px; align-items: center;">
         {% set prevPage = page > 1 ? page - 1 : 1 %}
         {% set nextPage = page < totalPages ? page + 1 : totalPages %}
-        <a class="btn {{ page == 1 ? 'disabled' : '' }}" href="{{ url('pragmatic-seo/images', { used: usedOnly ? 1 : 0, perPage: perPage, page: prevPage }) }}">Prev</a>
-        <div>Page {{ page }} / {{ totalPages }}</div>
-        <a class="btn {{ page == totalPages ? 'disabled' : '' }}" href="{{ url('pragmatic-seo/images', { used: usedOnly ? 1 : 0, perPage: perPage, page: nextPage }) }}">Next</a>
+        <a class="btn {{ page == 1 ? 'disabled' : '' }}" href="{{ url('pragmatic-seo/images', { used: usedOnly ? 1 : 0, perPage: perPage, page: prevPage }) }}">{{ 'Prev'|t('pragmatic-seo') }}</a>
+        <div>{{ 'Page'|t('pragmatic-seo') }} {{ page }} / {{ totalPages }}</div>
+        <a class="btn {{ page == totalPages ? 'disabled' : '' }}" href="{{ url('pragmatic-seo/images', { used: usedOnly ? 1 : 0, perPage: perPage, page: nextPage }) }}">{{ 'Next'|t('pragmatic-seo') }}</a>
       </div>
     </div>
   {% endif %}

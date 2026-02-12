@@ -2,12 +2,12 @@
 
 <div class="seo-field-sections">
   <div class="seo-section">
-    <h3 class="seo-section-heading">Metadatos</h3>
-    <p class="seo-section-description light">Título, descripción e imagen que aparecerán en buscadores y redes sociales.</p>
+    <h3 class="seo-section-heading">{{ 'Metadata'|t('pragmatic-seo') }}</h3>
+    <p class="seo-section-description light">{{ 'Title, description and image that will appear in search engines and social networks.'|t('pragmatic-seo') }}</p>
 
     <div class="flex-fields">
       {{ forms.textField({
-        label: 'Titulo',
+        label: 'Title'|t('pragmatic-seo'),
         name: field.handle ~ '[title]',
         value: value.title,
         translatable: true,
@@ -15,7 +15,7 @@
       }) }}
 
       {{ forms.textareaField({
-        label: 'Descripcion',
+        label: 'Description'|t('pragmatic-seo'),
         name: field.handle ~ '[description]',
         value: value.description,
         rows: 3,
@@ -26,7 +26,7 @@
 
     <div class="flex-fields">
       {{ forms.elementSelectField({
-        label: 'Imagen',
+        label: 'Image'|t('pragmatic-seo'),
         id: field.handle ~ '-image',
         name: field.handle ~ '[imageId][]',
         elementType: 'craft\\elements\\Asset',
@@ -39,7 +39,7 @@
       }) }}
 
       {{ forms.textareaField({
-        label: 'Descripcion de imagen',
+        label: 'Image description'|t('pragmatic-seo'),
         name: field.handle ~ '[imageDescription]',
         value: value.imageDescription,
         rows: 3,
@@ -52,12 +52,12 @@
   <hr class="seo-section-divider">
 
   <div class="seo-section">
-    <h3 class="seo-section-heading">Sitemap</h3>
-    <p class="seo-section-description light">Controla la visibilidad de esta entrada en el sitemap XML.</p>
+    <h3 class="seo-section-heading">{{ 'Sitemap'|t('pragmatic-seo') }}</h3>
+    <p class="seo-section-description light">{{ 'Controls the visibility of this entry in the XML sitemap.'|t('pragmatic-seo') }}</p>
 
     <div class="flex-fields">
       {{ forms.lightswitchField({
-        label: 'Visible en sitemap',
+        label: 'Visible in sitemap'|t('pragmatic-seo'),
         name: field.handle ~ '[sitemapEnabled]',
         on: value.sitemapEnabled is same as(false) ? false : true,
         value: 1,
@@ -65,7 +65,7 @@
       }) }}
 
       {{ forms.lightswitchField({
-        label: 'Incluir imágenes',
+        label: 'Include images'|t('pragmatic-seo'),
         name: field.handle ~ '[sitemapIncludeImages]',
         on: value.sitemapIncludeImages is same as(true),
         value: 1,

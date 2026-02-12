@@ -1,142 +1,94 @@
 {% import "_includes/forms" as forms %}
 
-{% set seoFieldUid = (field.handle ~ '-seo-tabs-' ~ random())|id %}
+<div class="seo-field-sections">
+  <div class="seo-section">
+    <h3 class="seo-section-heading">Metadatos</h3>
+    <p class="seo-section-description light">Título, descripción e imagen que aparecerán en buscadores y redes sociales.</p>
 
-{% css %}
-  #{{ seoFieldUid }} > .pane-tabs {
-    margin: 0;
-  }
-{% endcss %}
+    <div class="flex-fields">
+      {{ forms.textField({
+        label: 'Titulo',
+        name: field.handle ~ '[title]',
+        value: value.title,
+        translatable: true,
+        fieldClass: 'width-50',
+      }) }}
 
-<div id="{{ seoFieldUid }}" class="seo-field-tabs">
-  <div class="pane-tabs">
-    <div class="scrollable" role="tablist" aria-label="SEO field tabs">
-      <a id="tab-{{ seoFieldUid }}-general"
-         class="sel"
-         tabindex="0"
-         href="#{{ seoFieldUid }}-general"
-         role="tab"
-         data-id="{{ seoFieldUid }}-general"
-         aria-controls="{{ seoFieldUid }}-general"
-         aria-selected="true">
-        <span class="tab-label">General</span>
-      </a>
-      <a id="tab-{{ seoFieldUid }}-options"
-         href="#{{ seoFieldUid }}-options"
-         role="tab"
-         data-id="{{ seoFieldUid }}-options"
-         aria-controls="{{ seoFieldUid }}-options"
-         aria-selected="false"
-         tabindex="-1">
-        <span class="tab-label">Opciones</span>
-      </a>
+      {{ forms.textareaField({
+        label: 'Descripcion',
+        name: field.handle ~ '[description]',
+        value: value.description,
+        rows: 3,
+        translatable: true,
+        fieldClass: 'width-50',
+      }) }}
+    </div>
+
+    <div class="flex-fields">
+      {{ forms.elementSelectField({
+        label: 'Imagen',
+        id: field.handle ~ '-image',
+        name: field.handle ~ '[imageId][]',
+        elementType: 'craft\\\\elements\\\\Asset',
+        elements: imageElement ? [imageElement] : [],
+        limit: 1,
+        sources: '*',
+        criteria: { kind: 'image' },
+        translatable: true,
+        fieldClass: 'width-50',
+      }) }}
+
+      {{ forms.textareaField({
+        label: 'Descripcion de imagen',
+        name: field.handle ~ '[imageDescription]',
+        value: value.imageDescription,
+        rows: 3,
+        translatable: true,
+        fieldClass: 'width-50',
+      }) }}
     </div>
   </div>
 
-  <div id="{{ seoFieldUid }}-general" class="seo-tab-panel" role="tabpanel" aria-labelledby="tab-{{ seoFieldUid }}-general">
-    {{ forms.textField({
-      label: 'Titulo',
-      name: field.handle ~ '[title]',
-      value: value.title,
-      translatable: true,
-    }) }}
+  <hr class="seo-section-divider">
 
-    {{ forms.textareaField({
-      label: 'Descripcion',
-      name: field.handle ~ '[description]',
-      value: value.description,
-      rows: 3,
-      translatable: true,
-    }) }}
+  <div class="seo-section">
+    <h3 class="seo-section-heading">Sitemap</h3>
+    <p class="seo-section-description light">Controla la visibilidad de esta entrada en el sitemap XML.</p>
 
-    {{ forms.elementSelectField({
-      label: 'Imagen',
-      id: field.handle ~ '-image',
-      name: field.handle ~ '[imageId][]',
-      elementType: 'craft\\\\elements\\\\Asset',
-      elements: imageElement ? [imageElement] : [],
-      limit: 1,
-      sources: '*',
-      criteria: { kind: 'image' },
-      translatable: true,
-    }) }}
+    <div class="flex-fields">
+      {{ forms.lightswitchField({
+        label: 'Visible en sitemap',
+        name: field.handle ~ '[sitemapEnabled]',
+        on: value.sitemapEnabled is same as(false) ? false : true,
+        value: 1,
+        fieldClass: 'width-50',
+      }) }}
 
-    {{ forms.textareaField({
-      label: 'Descripcion de imagen',
-      name: field.handle ~ '[imageDescription]',
-      value: value.imageDescription,
-      rows: 3,
-      translatable: true,
-    }) }}
-  </div>
-
-  <div id="{{ seoFieldUid }}-options" class="seo-tab-panel hidden" role="tabpanel" aria-labelledby="tab-{{ seoFieldUid }}-options">
-    {{ forms.lightswitchField({
-      label: 'Sitemap: visible',
-      name: field.handle ~ '[sitemapEnabled]',
-      on: value.sitemapEnabled is same as(false) ? false : true,
-      value: 1,
-    }) }}
-
-    {{ forms.lightswitchField({
-      label: 'Sitemap: incluir imagenes',
-      name: field.handle ~ '[sitemapIncludeImages]',
-      on: value.sitemapIncludeImages is same as(true),
-      value: 1,
-    }) }}
+      {{ forms.lightswitchField({
+        label: 'Incluir imágenes',
+        name: field.handle ~ '[sitemapIncludeImages]',
+        on: value.sitemapIncludeImages is same as(true),
+        value: 1,
+        fieldClass: 'width-50',
+      }) }}
+    </div>
   </div>
 </div>
 
-{% js %}
-  (function() {
-    const container = document.getElementById('{{ seoFieldUid|e('js') }}');
-    if (!container) {
-      return;
-    }
-
-    const tabs = Array.from(container.querySelectorAll('[role=tab]'));
-    const panels = Array.from(container.querySelectorAll('.seo-tab-panel'));
-    if (!tabs.length || !panels.length) {
-      return;
-    }
-
-    const activateTab = (tabToActivate) => {
-      const targetId = tabToActivate.getAttribute('aria-controls');
-      if (!targetId) {
-        return;
-      }
-
-      tabs.forEach((tab) => {
-        const isActive = tab === tabToActivate;
-        tab.classList.toggle('sel', isActive);
-        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-        tab.tabIndex = isActive ? 0 : -1;
-      });
-
-      panels.forEach((panel) => {
-        panel.classList.toggle('hidden', panel.id !== targetId);
-      });
-    };
-
-    tabs.forEach((tab) => {
-      tab.addEventListener('click', (e) => {
-        e.preventDefault();
-        activateTab(tab);
-      });
-
-      tab.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') {
-          return;
-        }
-
-        e.preventDefault();
-        const currentIndex = tabs.indexOf(tab);
-        const direction = e.key === 'ArrowRight' ? 1 : -1;
-        const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
-        const nextTab = tabs[nextIndex];
-        activateTab(nextTab);
-        nextTab.focus();
-      });
-    });
-  })();
-{% endjs %}
+{% css %}
+  .seo-section-heading {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-color);
+  }
+  .seo-section-description {
+    margin: 0 0 16px;
+    font-size: 13px;
+  }
+  .seo-section-divider {
+    border: 0;
+    border-top: 1px solid var(--hairline-color);
+    margin: 16px 0;
+  }
+{% endcss %}

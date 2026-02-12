@@ -27,7 +27,9 @@
             <th>Usado</th>
             <th>Asset</th>
             <th>Titulo</th>
-            <th>Alt text</th>
+            {% for column in textColumns %}
+              <th>{{ column.name }}</th>
+            {% endfor %}
           </tr>
         </thead>
         <tbody>
@@ -51,12 +53,19 @@
                   value: asset.title,
                 }) }}
               </td>
-              <td>
-                {{ forms.text({
-                  name: "assets[#{asset.id}][altText]",
-                  value: row.altText,
-                }) }}
-              </td>
+              {% for column in textColumns %}
+                {% set value = row.fieldValues[column.handle] ?? null %}
+                <td>
+                  {% if value is same as(null) %}
+                    <span class="light">-</span>
+                  {% else %}
+                    {{ forms.text({
+                      name: "assets[#{asset.id}][fields][#{column.handle}]",
+                      value: value,
+                    }) }}
+                  {% endif %}
+                </td>
+              {% endfor %}
             </tr>
           {% endfor %}
         </tbody>

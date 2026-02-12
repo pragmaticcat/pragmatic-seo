@@ -3,15 +3,17 @@
 namespace pragmatic\seo\controllers;
 
 use Craft;
+use craft\base\FieldInterface;
 use craft\db\Query;
 use craft\elements\Asset;
+use craft\fields\PlainText;
 use craft\web\Controller;
 use pragmatic\seo\fields\SeoField;
 use yii\web\Response;
 
 class DefaultController extends Controller
 {
-    private const ASSET_META_TABLE = '{{%pragmaticseo_asset_meta}}';
+    private const LEGACY_ASSET_META_TABLE = '{{%pragmaticseo_asset_meta}}';
     protected int|bool|array $allowAnonymous = false;
 
     public function actionIndex(): Response
@@ -31,7 +33,7 @@ class DefaultController extends Controller
 
     public function actionImages(): Response
     {
-        $this->ensureAssetMetaTable();
+        $this->cleanupLegacyAssetMetaTable();
         $usedOnly = Craft::$app->getRequest()->getQueryParam('used') === '1';
 
         $assets = Asset::find()
@@ -44,14 +46,7 @@ class DefaultController extends Controller
         $assetIds = array_map(fn(Asset $asset) => (int)$asset->id, $assets);
         $usedIds = $this->getUsedAssetIds($assetIds);
 
-        $altRows = (new Query())
-            ->select(['assetId', 'altText'])
-            ->from(self::ASSET_META_TABLE)
-            ->all();
-        $altByAssetId = [];
-        foreach ($altRows as $row) {
-            $altByAssetId[(int)$row['assetId']] = (string)($row['altText'] ?? '');
-        }
+        $textColumns = $this->collectAssetTextColumns($assets);
 
         $rows = [];
         foreach ($assets as $asset) {
@@ -60,16 +55,25 @@ class DefaultController extends Controller
                 continue;
             }
 
+            $fieldHandles = $this->assetTextFieldHandles($asset);
+            $fieldValues = [];
+            foreach ($textColumns as $handle => $meta) {
+                $fieldValues[$handle] = in_array($handle, $fieldHandles, true)
+                    ? (string)$asset->getFieldValue($handle)
+                    : null;
+            }
+
             $rows[] = [
                 'asset' => $asset,
                 'isUsed' => $isUsed,
-                'altText' => $altByAssetId[(int)$asset->id] ?? '',
+                'fieldValues' => $fieldValues,
             ];
         }
 
         return $this->renderTemplate('pragmatic-seo/images', [
             'rows' => $rows,
             'usedOnly' => $usedOnly,
+            'textColumns' => $textColumns,
         ]);
     }
 
@@ -112,10 +116,9 @@ class DefaultController extends Controller
     public function actionSaveImages(): Response
     {
         $this->requirePostRequest();
-        $this->ensureAssetMetaTable();
+        $this->cleanupLegacyAssetMetaTable();
 
         $assetsData = Craft::$app->getRequest()->getBodyParam('assets', []);
-        $db = Craft::$app->getDb();
         $elements = Craft::$app->getElements();
 
         foreach ($assetsData as $assetId => $data) {
@@ -131,16 +134,18 @@ class DefaultController extends Controller
             $title = trim((string)($data['title'] ?? ''));
             if ($title !== '' && $title !== $asset->title) {
                 $asset->title = $title;
-                $elements->saveElement($asset, false, false, false);
             }
 
-            $altText = trim((string)($data['altText'] ?? ''));
-            $db->createCommand()->upsert(self::ASSET_META_TABLE, [
-                'assetId' => (int)$assetId,
-                'altText' => $altText,
-            ], [
-                'altText' => $altText,
-            ])->execute();
+            $fieldsData = $data['fields'] ?? [];
+            $assetTextHandles = $this->assetTextFieldHandles($asset);
+            foreach ($fieldsData as $handle => $value) {
+                if (!in_array((string)$handle, $assetTextHandles, true)) {
+                    continue;
+                }
+                $asset->setFieldValue((string)$handle, trim((string)$value));
+            }
+
+            $elements->saveElement($asset, false, false, false);
         }
 
         Craft::$app->getSession()->setNotice('Imagenes guardadas.');
@@ -161,26 +166,52 @@ class DefaultController extends Controller
             ->column());
     }
 
-    private function ensureAssetMetaTable(): void
+    private function collectAssetTextColumns(array $assets): array
+    {
+        $columns = [];
+        foreach ($assets as $asset) {
+            foreach ($asset->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+                if (!$this->isSupportedAssetTextField($field)) {
+                    continue;
+                }
+                $columns[$field->handle] = [
+                    'handle' => $field->handle,
+                    'name' => $field->name,
+                ];
+            }
+        }
+
+        ksort($columns);
+        return $columns;
+    }
+
+    private function assetTextFieldHandles(Asset $asset): array
+    {
+        $handles = [];
+        foreach ($asset->getFieldLayout()?->getCustomFields() ?? [] as $field) {
+            if ($this->isSupportedAssetTextField($field)) {
+                $handles[] = $field->handle;
+            }
+        }
+        return $handles;
+    }
+
+    private function isSupportedAssetTextField(FieldInterface $field): bool
+    {
+        if ($field instanceof PlainText) {
+            return true;
+        }
+
+        return strtolower(get_class($field)) === 'craft\\ckeditor\\field';
+    }
+
+    private function cleanupLegacyAssetMetaTable(): void
     {
         $db = Craft::$app->getDb();
-        if ($db->tableExists(self::ASSET_META_TABLE)) {
+        if (!$db->tableExists(self::LEGACY_ASSET_META_TABLE)) {
             return;
         }
 
-        $db->createCommand()->createTable(self::ASSET_META_TABLE, [
-            'assetId' => 'integer NOT NULL PRIMARY KEY',
-            'altText' => 'text',
-        ])->execute();
-
-        $db->createCommand()->addForeignKey(
-            null,
-            self::ASSET_META_TABLE,
-            ['assetId'],
-            '{{%assets}}',
-            ['id'],
-            'CASCADE',
-            'CASCADE'
-        )->execute();
+        $db->createCommand()->dropTable(self::LEGACY_ASSET_META_TABLE)->execute();
     }
 }

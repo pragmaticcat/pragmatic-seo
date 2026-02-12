@@ -49,7 +49,6 @@
       <thead>
         <tr>
           <th>Entry</th>
-          <th>Field</th>
           <th>Titulo</th>
           <th>Descripcion</th>
           <th>Imagen</th>
@@ -73,10 +72,6 @@
             <td>
               <input type="hidden" name="entries[{{ rowIndex }}][entryId]" value="{{ entryId }}">
               <input type="hidden" name="entries[{{ rowIndex }}][fieldHandle]" value="{{ row.fieldHandle }}">
-              <div>{{ row.fieldLabel }}</div>
-              <div class="light">{{ row.fieldHandle }}</div>
-            </td>
-            <td>
               <input class="text fullwidth" name="entries[{{ rowIndex }}][values][title]" value="{{ row.value.title ?? '' }}">
             </td>
             <td>
@@ -90,10 +85,12 @@
                 elementType: 'craft\\\\elements\\\\Asset',
                 elements: imageElement ? [imageElement] : [],
                 limit: 1,
+                criteria: { kind: 'image' },
+                sources: '*',
               }) }}
             </td>
             <td>
-              <input class="text fullwidth" name="entries[{{ rowIndex }}][values][imageDescription]" value="{{ row.value.imageDescription ?? '' }}">
+              <textarea class="text fullwidth" name="entries[{{ rowIndex }}][values][imageDescription]" rows="2">{{ row.value.imageDescription ?? '' }}</textarea>
             </td>
             <td style="white-space: nowrap;">
               <button class="btn submit" type="submit" name="saveRow" value="{{ rowIndex }}">Guardar fila</button>

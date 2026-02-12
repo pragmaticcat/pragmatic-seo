@@ -2,6 +2,7 @@
 
 namespace pragmatic\seo;
 
+use Craft;
 use craft\base\Plugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterComponentTypesEvent;
@@ -16,6 +17,7 @@ class PragmaticSeo extends Plugin
 {
     public bool $hasCpSection = true;
     public string $templateRoot = 'src/templates';
+    private bool $seoFieldsTranslationEnsured = false;
 
     public function init(): void
     {
@@ -50,6 +52,10 @@ class PragmaticSeo extends Plugin
                 $event->types[] = SeoField::class;
             }
         );
+
+        Craft::$app->onInit(function () {
+            $this->ensureSeoFieldsAreTranslatable();
+        });
 
         // Register nav item under shared "Pragmatic" group
         Event::on(
@@ -112,4 +118,25 @@ class PragmaticSeo extends Plugin
         return null;
     }
 
+    private function ensureSeoFieldsAreTranslatable(): void
+    {
+        if ($this->seoFieldsTranslationEnsured) {
+            return;
+        }
+        $this->seoFieldsTranslationEnsured = true;
+
+        $fieldsService = Craft::$app->getFields();
+        foreach ($fieldsService->getAllFields() as $field) {
+            if (!$field instanceof SeoField) {
+                continue;
+            }
+
+            if ($field->translationMethod === SeoField::TRANSLATION_METHOD_SITE) {
+                continue;
+            }
+
+            $field->translationMethod = SeoField::TRANSLATION_METHOD_SITE;
+            $fieldsService->saveField($field, false);
+        }
+    }
 }

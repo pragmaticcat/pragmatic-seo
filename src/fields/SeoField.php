@@ -6,12 +6,17 @@ use Craft;
 use craft\base\ElementInterface;
 use craft\base\Field;
 use craft\elements\Asset;
-use craft\helpers\Json;
+use craft\helpers\Db;
+use craft\helpers\StringHelper;
 use GraphQL\Type\Definition\Type;
+use yii\db\Query;
 use yii\db\Schema;
 
 class SeoField extends Field
 {
+    private const STORAGE_TABLE = '{{%pragmaticseo_seo_blocks}}';
+    private static bool $storageReady = false;
+
     public string $translationMethod = self::TRANSLATION_METHOD_SITE;
     public string $defaultTitle = '';
     public string $defaultDescription = '';
@@ -30,7 +35,7 @@ class SeoField extends Field
 
     public static function dbType(): array|string|null
     {
-        return Schema::TYPE_TEXT;
+        return null;
     }
 
     public function rules(): array
@@ -47,49 +52,60 @@ class SeoField extends Field
             return $value;
         }
 
-        if (is_string($value) && $value !== '') {
-            $value = Json::decodeIfJson($value);
-        }
+        $this->ensureStorageTable();
 
-        if (!is_array($value)) {
-            $value = [];
+        if ($element && $element->id && $this->id) {
+            $stored = $this->loadStoredValue((int)$element->id, (int)$element->siteId);
+            if ($stored !== null) {
+                return $stored;
+            }
         }
 
         return new SeoFieldValue([
-            'title' => (string)($value['title'] ?? $this->defaultTitle),
-            'description' => (string)($value['description'] ?? $this->defaultDescription),
-            'imageId' => $this->normalizeImageId($value['imageId'] ?? null) ?? $this->defaultImageId,
-            'imageDescription' => (string)($value['imageDescription'] ?? $this->defaultImageDescription),
-            'sitemapEnabled' => array_key_exists('sitemapEnabled', $value) ? (bool)$value['sitemapEnabled'] : null,
-            'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $value) ? (bool)$value['sitemapIncludeImages'] : null,
+            'title' => $this->defaultTitle,
+            'description' => $this->defaultDescription,
+            'imageId' => $this->defaultImageId,
+            'imageDescription' => $this->defaultImageDescription,
+            'sitemapEnabled' => null,
+            'sitemapIncludeImages' => null,
         ]);
     }
 
     public function serializeValue(mixed $value, ?ElementInterface $element = null): mixed
     {
-        if ($value instanceof SeoFieldValue) {
-            return Json::encode($value->toArray());
-        }
+        $this->ensureStorageTable();
 
-        if (is_array($value)) {
-            return Json::encode([
+        if ($value instanceof SeoFieldValue) {
+            $data = $value->toArray();
+        } elseif (is_array($value)) {
+            $data = [
                 'title' => (string)($value['title'] ?? ''),
                 'description' => (string)($value['description'] ?? ''),
                 'imageId' => $this->normalizeImageId($value['imageId'] ?? null),
                 'imageDescription' => (string)($value['imageDescription'] ?? ''),
                 'sitemapEnabled' => array_key_exists('sitemapEnabled', $value) ? (bool)$value['sitemapEnabled'] : null,
                 'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $value) ? (bool)$value['sitemapIncludeImages'] : null,
-            ]);
+            ];
+        } else {
+            $data = [
+                'title' => '',
+                'description' => '',
+                'imageId' => null,
+                'imageDescription' => '',
+                'sitemapEnabled' => null,
+                'sitemapIncludeImages' => null,
+            ];
         }
 
-        return Json::encode([
-            'title' => '',
-            'description' => '',
-            'imageId' => null,
-            'imageDescription' => '',
-            'sitemapEnabled' => null,
-            'sitemapIncludeImages' => null,
-        ]);
+        if ($element && $element->id && $this->id) {
+            $this->persistStoredValue(
+                (int)$element->id,
+                (int)$element->siteId,
+                $data
+            );
+        }
+
+        return null;
     }
 
     public function getSearchKeywords(mixed $value, ElementInterface $element): string
@@ -157,5 +173,146 @@ class SeoField extends Field
         }
 
         return (int)$value;
+    }
+
+    private function ensureStorageTable(): void
+    {
+        if (self::$storageReady) {
+            return;
+        }
+        self::$storageReady = true;
+
+        $db = Craft::$app->getDb();
+        if ($db->tableExists(self::STORAGE_TABLE)) {
+            return;
+        }
+
+        $db->createCommand()->createTable(self::STORAGE_TABLE, [
+            'id' => Schema::TYPE_PK,
+            'canonicalId' => Schema::TYPE_INTEGER . ' NOT NULL',
+            'siteId' => Schema::TYPE_INTEGER . ' NOT NULL',
+            'fieldId' => Schema::TYPE_INTEGER . ' NOT NULL',
+            'title' => Schema::TYPE_TEXT,
+            'description' => Schema::TYPE_TEXT,
+            'imageId' => Schema::TYPE_INTEGER,
+            'imageDescription' => Schema::TYPE_TEXT,
+            'sitemapEnabled' => Schema::TYPE_BOOLEAN,
+            'sitemapIncludeImages' => Schema::TYPE_BOOLEAN,
+            'dateCreated' => Schema::TYPE_DATETIME . ' NOT NULL',
+            'dateUpdated' => Schema::TYPE_DATETIME . ' NOT NULL',
+            'uid' => Schema::TYPE_UID . ' NOT NULL',
+        ])->execute();
+
+        $db->createCommand()->createIndex(
+            null,
+            self::STORAGE_TABLE,
+            ['canonicalId', 'siteId', 'fieldId'],
+            true
+        )->execute();
+    }
+
+    private function loadStoredValue(int $elementId, int $siteId): ?SeoFieldValue
+    {
+        $canonicalId = $this->resolveCanonicalId($elementId);
+        $row = (new Query())
+            ->from(self::STORAGE_TABLE)
+            ->where([
+                'canonicalId' => $canonicalId,
+                'siteId' => $siteId,
+                'fieldId' => (int)$this->id,
+            ])
+            ->one();
+
+        $fallbackSiteId = (int)Craft::$app->getSites()->getPrimarySite()->id;
+        if (!$row && $siteId !== $fallbackSiteId) {
+            $row = (new Query())
+                ->from(self::STORAGE_TABLE)
+                ->where([
+                    'canonicalId' => $canonicalId,
+                    'siteId' => $fallbackSiteId,
+                    'fieldId' => (int)$this->id,
+                ])
+                ->one();
+        }
+
+        $optionsRow = (new Query())
+            ->from(self::STORAGE_TABLE)
+            ->where([
+                'canonicalId' => $canonicalId,
+                'siteId' => 0,
+                'fieldId' => (int)$this->id,
+            ])
+            ->one();
+
+        if (!$row && !$optionsRow) {
+            return null;
+        }
+
+        return new SeoFieldValue([
+            'title' => (string)($row['title'] ?? $this->defaultTitle),
+            'description' => (string)($row['description'] ?? $this->defaultDescription),
+            'imageId' => !empty($row['imageId']) ? (int)$row['imageId'] : $this->defaultImageId,
+            'imageDescription' => (string)($row['imageDescription'] ?? $this->defaultImageDescription),
+            'sitemapEnabled' => array_key_exists('sitemapEnabled', (array)$optionsRow) ? ($optionsRow['sitemapEnabled'] === null ? null : (bool)$optionsRow['sitemapEnabled']) : null,
+            'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', (array)$optionsRow) ? ($optionsRow['sitemapIncludeImages'] === null ? null : (bool)$optionsRow['sitemapIncludeImages']) : null,
+        ]);
+    }
+
+    private function persistStoredValue(int $elementId, int $siteId, array $data): void
+    {
+        $canonicalId = $this->resolveCanonicalId($elementId);
+        $db = Craft::$app->getDb();
+        $now = Db::prepareDateForDb(new \DateTime());
+
+        $db->createCommand()->upsert(self::STORAGE_TABLE, [
+            'canonicalId' => $canonicalId,
+            'siteId' => $siteId,
+            'fieldId' => (int)$this->id,
+            'title' => (string)($data['title'] ?? ''),
+            'description' => (string)($data['description'] ?? ''),
+            'imageId' => $this->normalizeImageId($data['imageId'] ?? null),
+            'imageDescription' => (string)($data['imageDescription'] ?? ''),
+            'dateCreated' => $now,
+            'dateUpdated' => $now,
+            'uid' => StringHelper::UUID(),
+        ], [
+            'title' => (string)($data['title'] ?? ''),
+            'description' => (string)($data['description'] ?? ''),
+            'imageId' => $this->normalizeImageId($data['imageId'] ?? null),
+            'imageDescription' => (string)($data['imageDescription'] ?? ''),
+            'dateUpdated' => $now,
+        ])->execute();
+
+        if (array_key_exists('sitemapEnabled', $data) || array_key_exists('sitemapIncludeImages', $data)) {
+            $db->createCommand()->upsert(self::STORAGE_TABLE, [
+                'canonicalId' => $canonicalId,
+                'siteId' => 0,
+                'fieldId' => (int)$this->id,
+                'title' => null,
+                'description' => null,
+                'imageId' => null,
+                'imageDescription' => null,
+                'sitemapEnabled' => array_key_exists('sitemapEnabled', $data) ? $data['sitemapEnabled'] : null,
+                'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $data) ? $data['sitemapIncludeImages'] : null,
+                'dateCreated' => $now,
+                'dateUpdated' => $now,
+                'uid' => StringHelper::UUID(),
+            ], [
+                'sitemapEnabled' => array_key_exists('sitemapEnabled', $data) ? $data['sitemapEnabled'] : null,
+                'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $data) ? $data['sitemapIncludeImages'] : null,
+                'dateUpdated' => $now,
+            ])->execute();
+        }
+    }
+
+    private function resolveCanonicalId(int $elementId): int
+    {
+        $canonicalId = (new Query())
+            ->select(['canonicalId'])
+            ->from('{{%elements}}')
+            ->where(['id' => $elementId])
+            ->scalar();
+
+        return $canonicalId ? (int)$canonicalId : $elementId;
     }
 }

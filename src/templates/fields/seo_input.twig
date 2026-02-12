@@ -3,16 +3,72 @@
 {% set seoFieldUid = (field.handle ~ '-seo-tabs-' ~ random())|id %}
 
 {% css %}
-  .seo-field-tabs .tab-panel.hidden { display: none; }
+  .seo-field-tabs .seo-tabs-nav {
+    display: flex;
+    gap: 6px;
+    border-bottom: 1px solid #d7d8db;
+    margin-bottom: 16px;
+    padding-bottom: 0;
+  }
+
+  .seo-field-tabs .seo-tab {
+    appearance: none;
+    border: 1px solid transparent;
+    border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+    background: transparent;
+    color: #5c6a79;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.2;
+    padding: 10px 14px;
+    margin-bottom: -1px;
+  }
+
+  .seo-field-tabs .seo-tab.is-active {
+    background: #fff;
+    border-color: #d7d8db;
+    color: #0d1f2f;
+  }
+
+  .seo-field-tabs .seo-tab:hover {
+    color: #0d1f2f;
+  }
+
+  .seo-field-tabs .seo-tab-panel.hidden {
+    display: none;
+  }
 {% endcss %}
 
 <div id="{{ seoFieldUid }}" class="seo-field-tabs">
-  <div class="tabs">
-    <a class="tab sel" href="#{{ seoFieldUid }}-general">General</a>
-    <a class="tab" href="#{{ seoFieldUid }}-options">Opciones</a>
+  <div class="seo-tabs-nav" role="tablist" aria-label="SEO field tabs">
+    <button
+      type="button"
+      class="seo-tab is-active"
+      data-tab-target="{{ seoFieldUid }}-general"
+      id="{{ seoFieldUid }}-tab-general"
+      role="tab"
+      aria-controls="{{ seoFieldUid }}-general"
+      aria-selected="true"
+    >
+      General
+    </button>
+    <button
+      type="button"
+      class="seo-tab"
+      data-tab-target="{{ seoFieldUid }}-options"
+      id="{{ seoFieldUid }}-tab-options"
+      role="tab"
+      aria-controls="{{ seoFieldUid }}-options"
+      aria-selected="false"
+      tabindex="-1"
+    >
+      Opciones
+    </button>
   </div>
 
-  <div id="{{ seoFieldUid }}-general" class="tab-panel">
+  <div id="{{ seoFieldUid }}-general" class="seo-tab-panel" role="tabpanel" aria-labelledby="{{ seoFieldUid }}-tab-general">
     <div class="flex-fields">
       {{ forms.textField({
         label: 'Titulo',
@@ -53,7 +109,7 @@
     </div>
   </div>
 
-  <div id="{{ seoFieldUid }}-options" class="tab-panel hidden">
+  <div id="{{ seoFieldUid }}-options" class="seo-tab-panel hidden" role="tabpanel" aria-labelledby="{{ seoFieldUid }}-tab-options">
     <div class="flex-fields">
       {{ forms.lightswitchField({
         label: 'Sitemap: visible',
@@ -77,11 +133,50 @@
 {% js %}
   (function() {
     const container = document.getElementById('{{ seoFieldUid|e('js') }}');
-    if (!container || typeof Garnish === 'undefined' || typeof Garnish.Tabs !== 'function') {
+    if (!container) {
       return;
     }
 
-    const tabLinks = container.querySelectorAll('.tabs .tab');
-    new Garnish.Tabs(tabLinks);
+    const tabs = Array.from(container.querySelectorAll('.seo-tab'));
+    const panels = Array.from(container.querySelectorAll('.seo-tab-panel'));
+    if (!tabs.length || !panels.length) {
+      return;
+    }
+
+    const activateTab = (tabToActivate) => {
+      const targetId = tabToActivate.dataset.tabTarget;
+      if (!targetId) {
+        return;
+      }
+
+      tabs.forEach((tab) => {
+        const isActive = tab === tabToActivate;
+        tab.classList.toggle('is-active', isActive);
+        tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        tab.tabIndex = isActive ? 0 : -1;
+      });
+
+      panels.forEach((panel) => {
+        const isActive = panel.id === targetId;
+        panel.classList.toggle('hidden', !isActive);
+      });
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activateTab(tab));
+      tab.addEventListener('keydown', (event) => {
+        if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') {
+          return;
+        }
+
+        event.preventDefault();
+        const currentIndex = tabs.indexOf(tab);
+        const direction = event.key === 'ArrowRight' ? 1 : -1;
+        const nextIndex = (currentIndex + direction + tabs.length) % tabs.length;
+        const nextTab = tabs[nextIndex];
+        activateTab(nextTab);
+        nextTab.focus();
+      });
+    });
   })();
 {% endjs %}

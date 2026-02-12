@@ -318,9 +318,7 @@ class DefaultController extends Controller
             }
         }
 
-        $xml = Craft::$app->getView()->renderTemplate('pragmatic-seo/sitemap_xml', [
-            'urls' => $urls,
-        ]);
+        $xml = $this->buildSitemapXml($urls);
 
         $response = Craft::$app->getResponse();
         $response->getHeaders()->set('Content-Type', 'application/xml; charset=UTF-8');
@@ -669,5 +667,28 @@ class DefaultController extends Controller
         if ($asset->canSetProperty('alt')) {
             $asset->alt = $value;
         }
+    }
+
+    private function buildSitemapXml(array $urls): string
+    {
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+        $xml .= '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">' . "\n";
+
+        foreach ($urls as $row) {
+            $loc = htmlspecialchars((string)($row['loc'] ?? ''), ENT_XML1, 'UTF-8');
+            if ($loc === '') {
+                continue;
+            }
+            $xml .= "  <url>\n";
+            $xml .= "    <loc>{$loc}</loc>\n";
+            if (!empty($row['lastmod'])) {
+                $lastmod = htmlspecialchars((string)$row['lastmod'], ENT_XML1, 'UTF-8');
+                $xml .= "    <lastmod>{$lastmod}</lastmod>\n";
+            }
+            $xml .= "  </url>\n";
+        }
+
+        $xml .= '</urlset>';
+        return $xml;
     }
 }

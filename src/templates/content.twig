@@ -22,7 +22,7 @@
         {% for section in sections %}
           <li>
             <a class="{{ section.id == sectionId ? 'sel' : '' }}" href="{{ url('pragmatic-seo/content', { site: selectedSite.handle, section: section.id }) }}">
-              {{ section.name }}
+              {{ section.name }} <span class="light">({{ section.count }})</span>
             </a>
           </li>
         {% endfor %}

@@ -1001,7 +1001,7 @@ class DefaultController extends Controller
 
     private function getSeoSectionsForSite(int $siteId, int $selectedSectionId = 0): array
     {
-        $availableSectionIds = [];
+        $sectionCounts = [];
         $entries = Entry::find()
             ->siteId($siteId)
             ->status(null)
@@ -1017,24 +1017,28 @@ class DefaultController extends Controller
                 continue;
             }
 
-            $availableSectionIds[(int)$section->id] = true;
+            $id = (int)$section->id;
+            $sectionCounts[$id] = ($sectionCounts[$id] ?? 0) + 1;
         }
 
-        $sections = [];
+        $rows = [];
         foreach (Craft::$app->entries->getAllSections() as $section) {
-            if (isset($availableSectionIds[(int)$section->id])) {
-                $sections[] = $section;
+            $id = (int)$section->id;
+            if (isset($sectionCounts[$id])) {
+                $rows[$id] = ['id' => $id, 'name' => $section->name, 'count' => $sectionCounts[$id]];
             }
         }
 
-        if ($selectedSectionId && !isset($availableSectionIds[$selectedSectionId])) {
+        if ($selectedSectionId && !isset($rows[$selectedSectionId])) {
             $selectedSection = Craft::$app->entries->getSectionById($selectedSectionId);
             if ($selectedSection) {
-                $sections[] = $selectedSection;
+                $rows[$selectedSectionId] = ['id' => $selectedSectionId, 'name' => $selectedSection->name, 'count' => 0];
             }
         }
 
-        return $sections;
+        usort($rows, fn($a, $b) => $b['count'] <=> $a['count'] ?: strcmp($a['name'], $b['name']));
+
+        return array_values($rows);
     }
 
     private function buildSitemapXml(array $urls): string

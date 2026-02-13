@@ -426,7 +426,20 @@ class DefaultController extends Controller
             'imageDescription' => trim((string)($values['imageDescription'] ?? '')),
         ]);
 
-        Craft::$app->getElements()->saveElement($entry, false, false);
+        $saved = Craft::$app->getElements()->saveElement($entry, false, false);
+        if (!$saved) {
+            $message = implode(' ', $entry->getErrorSummary(true)) ?: 'No se pudo guardar el contenido SEO.';
+            if ($request->getAcceptsJson() || $request->getIsAjax()) {
+                return $this->asJson([
+                    'success' => false,
+                    'message' => $message,
+                ]);
+            }
+
+            Craft::$app->getSession()->setError($message);
+            return $this->redirectToPostedUrl();
+        }
+
         Craft::$app->getSession()->setNotice('Contenido SEO guardado.');
 
         if ($request->getAcceptsJson() || $request->getIsAjax()) {

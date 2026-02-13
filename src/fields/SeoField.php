@@ -88,38 +88,7 @@ class SeoField extends Field
     {
         $this->ensureStorageTable();
 
-        if ($value instanceof SeoFieldValue) {
-            $data = [
-                'title' => (string)$value->title,
-                'description' => (string)$value->description,
-                'imageId' => $this->normalizeImageId($value->imageId),
-                'imageDescription' => (string)$value->imageDescription,
-            ];
-            if ($value->sitemapEnabled !== null) {
-                $data['sitemapEnabled'] = (bool)$value->sitemapEnabled;
-            }
-            if ($value->sitemapIncludeImages !== null) {
-                $data['sitemapIncludeImages'] = (bool)$value->sitemapIncludeImages;
-            }
-        } elseif (is_array($value)) {
-            $data = [
-                'title' => (string)($value['title'] ?? ''),
-                'description' => (string)($value['description'] ?? ''),
-                'imageId' => $this->normalizeImageId($value['imageId'] ?? null),
-                'imageDescription' => (string)($value['imageDescription'] ?? ''),
-                'sitemapEnabled' => array_key_exists('sitemapEnabled', $value) ? (bool)$value['sitemapEnabled'] : null,
-                'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $value) ? (bool)$value['sitemapIncludeImages'] : null,
-            ];
-        } else {
-            $data = [
-                'title' => '',
-                'description' => '',
-                'imageId' => null,
-                'imageDescription' => '',
-                'sitemapEnabled' => null,
-                'sitemapIncludeImages' => null,
-            ];
-        }
+        $data = $this->storageDataFromValue($value);
 
         if ($element && $element->id && $this->id) {
             $this->persistStoredValue(
@@ -130,6 +99,18 @@ class SeoField extends Field
         }
 
         return null;
+    }
+
+    public function afterElementSave(ElementInterface $element, bool $isNew): void
+    {
+        parent::afterElementSave($element, $isNew);
+        if (!$element->id || !$this->id) {
+            return;
+        }
+
+        $value = $element->getFieldValue($this->handle);
+        $data = $this->storageDataFromValue($value);
+        $this->persistStoredValue((int)$element->id, (int)$element->siteId, $data);
     }
 
     public function getSearchKeywords(mixed $value, ElementInterface $element): string
@@ -197,6 +178,48 @@ class SeoField extends Field
         }
 
         return (int)$value;
+    }
+
+    private function storageDataFromValue(mixed $value): array
+    {
+        if ($value instanceof SeoFieldValue) {
+            $data = [
+                'title' => (string)$value->title,
+                'description' => (string)$value->description,
+                'imageId' => $this->normalizeImageId($value->imageId),
+                'imageDescription' => (string)$value->imageDescription,
+            ];
+            if ($value->sitemapEnabled !== null) {
+                $data['sitemapEnabled'] = (bool)$value->sitemapEnabled;
+            }
+            if ($value->sitemapIncludeImages !== null) {
+                $data['sitemapIncludeImages'] = (bool)$value->sitemapIncludeImages;
+            }
+            return $data;
+        }
+
+        if (is_array($value)) {
+            $data = [
+                'title' => (string)($value['title'] ?? ''),
+                'description' => (string)($value['description'] ?? ''),
+                'imageId' => $this->normalizeImageId($value['imageId'] ?? null),
+                'imageDescription' => (string)($value['imageDescription'] ?? ''),
+            ];
+            if (array_key_exists('sitemapEnabled', $value)) {
+                $data['sitemapEnabled'] = (bool)$value['sitemapEnabled'];
+            }
+            if (array_key_exists('sitemapIncludeImages', $value)) {
+                $data['sitemapIncludeImages'] = (bool)$value['sitemapIncludeImages'];
+            }
+            return $data;
+        }
+
+        return [
+            'title' => '',
+            'description' => '',
+            'imageId' => null,
+            'imageDescription' => '',
+        ];
     }
 
     private function ensureStorageTable(): void

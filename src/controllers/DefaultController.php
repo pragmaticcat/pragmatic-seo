@@ -50,18 +50,34 @@ class DefaultController extends Controller
 
     public function actionAudit(): Response
     {
-        $sites = Craft::$app->getSites()->getAllSites();
         $selectedSite = Cp::requestedSite() ?? Craft::$app->getSites()->getPrimarySite();
         $selectedSiteId = (int)$selectedSite->id;
         $sectionId = (int)Craft::$app->getRequest()->getQueryParam('section', 0);
         $sections = $this->getSeoSectionsForSite($selectedSiteId, $sectionId);
 
+        $entryQuery = Entry::find()->siteId($selectedSiteId)->status(null);
+        if ($sectionId) {
+            $entryQuery->sectionId($sectionId);
+        }
+
+        $rows = [];
+        foreach ($entryQuery->all() as $entry) {
+            if (!$this->entryHasSeoField($entry)) {
+                continue;
+            }
+            $rows[] = [
+                'entryId'    => $entry->id,
+                'entrySiteId' => $entry->siteId,
+                'entryTitle' => $entry->title ?: 'Entry #' . $entry->id,
+            ];
+        }
+
         return $this->renderTemplate('pragmatic-seo/audit', [
-            'sites' => $sites,
-            'selectedSite' => $selectedSite,
+            'selectedSite'   => $selectedSite,
             'selectedSiteId' => $selectedSiteId,
-            'sections' => $sections,
-            'sectionId' => $sectionId,
+            'sections'       => $sections,
+            'sectionId'      => $sectionId,
+            'rows'           => $rows,
         ]);
     }
 
@@ -75,7 +91,18 @@ class DefaultController extends Controller
         $settings = PragmaticSeo::$plugin->getMetaSettings()->getSiteSettings($siteId);
         $audit = $this->buildTechnicalAudit($siteId, $settings, $sectionId);
 
-        return $this->asJson($audit);
+        // Key results by entryId so the JS can look them up directly.
+        $byEntry = [];
+        foreach ($audit['rows'] as $row) {
+            $byEntry[(int)$row['entryId']] = $row;
+        }
+
+        return $this->asJson([
+            'rows'           => $byEntry,
+            'truncated'      => $audit['truncated'],
+            'scannedEntries' => $audit['scannedEntries'],
+            'totalEntries'   => $audit['totalEntries'],
+        ]);
     }
 
     public function actionSaveOptions(): Response

@@ -40,52 +40,40 @@
       font-weight: 600;
       text-transform: uppercase;
     }
-    .seo-status-ok { background: #dcfce7; color: #166534; }
+    .seo-status-ok   { background: #dcfce7; color: #166534; }
     .seo-status-warn { background: #fef3c7; color: #92400e; }
-    .seo-status-error { background: #fee2e2; color: #991b1b; }
-    .seo-checks {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
+    .seo-status-error{ background: #fee2e2; color: #991b1b; }
+    .seo-checks { display: flex; flex-wrap: wrap; gap: 6px; }
     .seo-check {
-      font-size: 11px;
-      border-radius: 999px;
-      padding: 2px 8px;
-      background: #eef2ff;
-      color: #3730a3;
+      font-size: 11px; border-radius: 999px;
+      padding: 2px 8px; background: #eef2ff; color: #3730a3;
     }
-    .seo-check.bad {
-      background: #fef2f2;
-      color: #b91c1c;
-    }
+    .seo-check.bad { background: #fef2f2; color: #b91c1c; }
   {% endcss %}
 
-  <div class="flex" style="align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
-    <button id="run-audit-btn" class="btn danger" type="button">
-      {{ 'Run audit'|t('pragmatic-seo') }}
-    </button>
-    <div id="audit-status-filter" style="display:none;">
-      <div class="select">
-        <select id="audit-status-select">
-          <option value="all">{{ 'All statuses'|t('pragmatic-seo') }}</option>
-          <option value="error" id="opt-error">{{ 'Errors'|t('pragmatic-seo') }}</option>
-          <option value="warn" id="opt-warn">{{ 'Warnings'|t('pragmatic-seo') }}</option>
-          <option value="ok" id="opt-ok">OK</option>
-        </select>
+  {% if rows is empty %}
+    <p class="light">{{ 'No entries with an SEO field in this section.'|t('pragmatic-seo') }}</p>
+  {% else %}
+    <div class="flex" style="align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+      <button id="run-audit-btn" class="btn danger" type="button">
+        {{ 'Run audit'|t('pragmatic-seo') }}
+      </button>
+      <div id="audit-status-filter" style="display:none;">
+        <div class="select">
+          <select id="audit-status-select">
+            <option value="all">{{ 'All statuses'|t('pragmatic-seo') }}</option>
+            <option value="error" id="opt-error">{{ 'Errors'|t('pragmatic-seo') }}</option>
+            <option value="warn"  id="opt-warn">{{ 'Warnings'|t('pragmatic-seo') }}</option>
+            <option value="ok"    id="opt-ok">OK</option>
+          </select>
+        </div>
       </div>
+      <span id="audit-progress" style="display:none; color:#6b7280;">
+        {{ 'Running audit…'|t('pragmatic-seo') }}
+      </span>
+      <p id="audit-truncated-notice" class="light" style="display:none; margin:0;"></p>
     </div>
-    <span id="audit-progress" style="display:none; color:#6b7280;">
-      {{ 'Running audit…'|t('pragmatic-seo') }}
-    </span>
-  </div>
 
-  <div id="audit-empty">
-    <p class="light">{{ 'Click "Run audit" to analyse entries in this section.'|t('pragmatic-seo') }}</p>
-  </div>
-
-  <div id="audit-results" style="display:none;">
-    <p id="audit-truncated-notice" class="light" style="display:none;margin-bottom:8px;"></p>
     <table id="audit-table" class="data fullwidth">
       <thead>
         <tr>
@@ -94,116 +82,87 @@
           <th>{{ 'Checks'|t('pragmatic-seo') }}</th>
         </tr>
       </thead>
-      <tbody id="audit-tbody"></tbody>
+      <tbody>
+        {% for row in rows %}
+          <tr data-entry-id="{{ row.entryId }}" data-status="">
+            <td>
+              <a href="#" class="js-entry-slideout" data-entry-id="{{ row.entryId }}" data-site-id="{{ row.entrySiteId }}">{{ row.entryTitle }}</a>
+              <div class="light"><code>ID {{ row.entryId }}</code></div>
+            </td>
+            <td class="js-audit-status"><span class="light">—</span></td>
+            <td class="js-audit-checks"></td>
+          </tr>
+        {% endfor %}
+      </tbody>
     </table>
-  </div>
+  {% endif %}
 
   {% js %}
     (function() {
       var checkTooltips = {
-        title: '{{ 'Missing final title. Define an SEO title or ensure the entry has a title.'|t('pragmatic-seo')|e('js') }}',
+        title:       '{{ 'Missing final title. Define an SEO title or ensure the entry has a title.'|t('pragmatic-seo')|e('js') }}',
         description: '{{ 'Missing SEO description. Add one to improve search result snippets.'|t('pragmatic-seo')|e('js') }}',
-        canonical: '{{ 'Could not resolve a canonical URL for this entry.'|t('pragmatic-seo')|e('js') }}',
-        image: '{{ 'No SEO image. Recommended for improved social sharing.'|t('pragmatic-seo')|e('js') }}',
-        robots: '{{ 'Check the robots directive for this page.'|t('pragmatic-seo')|e('js') }}',
-        jsonLd: '{{ 'JSON-LD disabled in options for this language/site.'|t('pragmatic-seo')|e('js') }}',
-        hreflang: '{{ 'Not enough localised variants detected to emit hreflang.'|t('pragmatic-seo')|e('js') }}',
+        canonical:   '{{ 'Could not resolve a canonical URL for this entry.'|t('pragmatic-seo')|e('js') }}',
+        image:       '{{ 'No SEO image. Recommended for improved social sharing.'|t('pragmatic-seo')|e('js') }}',
+        robots:      '{{ 'Check the robots directive for this page.'|t('pragmatic-seo')|e('js') }}',
+        jsonLd:      '{{ 'JSON-LD disabled in options for this language/site.'|t('pragmatic-seo')|e('js') }}',
+        hreflang:    '{{ 'Not enough localised variants detected to emit hreflang.'|t('pragmatic-seo')|e('js') }}',
       };
 
-      var btn = document.getElementById('run-audit-btn');
-      var emptyEl = document.getElementById('audit-empty');
-      var progressEl = document.getElementById('audit-progress');
-      var resultsEl = document.getElementById('audit-results');
-      var tbody = document.getElementById('audit-tbody');
+      var btn             = document.getElementById('run-audit-btn');
+      var progressEl      = document.getElementById('audit-progress');
+      var statusFilter    = document.getElementById('audit-status-filter');
+      var statusSelect    = document.getElementById('audit-status-select');
       var truncatedNotice = document.getElementById('audit-truncated-notice');
-      var statusFilter = document.getElementById('audit-status-filter');
-      var statusSelect = document.getElementById('audit-status-select');
-      var optError = document.getElementById('opt-error');
-      var optWarn = document.getElementById('opt-warn');
-      var optOk = document.getElementById('opt-ok');
-      var labelError = '{{ 'Errors'|t('pragmatic-seo')|e('js') }}';
-      var labelWarn = '{{ 'Warnings'|t('pragmatic-seo')|e('js') }}';
-      var labelOk = 'OK';
+      var optError        = document.getElementById('opt-error');
+      var optWarn         = document.getElementById('opt-warn');
+      var optOk           = document.getElementById('opt-ok');
+      var labelError      = '{{ 'Errors'|t('pragmatic-seo')|e('js') }}';
+      var labelWarn       = '{{ 'Warnings'|t('pragmatic-seo')|e('js') }}';
 
       function applyFilter(filter) {
-        if (!tbody) return;
-        tbody.querySelectorAll('tr[data-status]').forEach(function(tr) {
-          tr.style.display = (filter === 'all' || tr.getAttribute('data-status') === filter) ? '' : 'none';
+        document.querySelectorAll('#audit-table tbody tr[data-entry-id]').forEach(function(tr) {
+          var status = tr.getAttribute('data-status');
+          var show = filter === 'all' || status === filter || status === '';
+          tr.style.display = show ? '' : 'none';
         });
       }
 
-      function renderRows(rows) {
-        if (!tbody) return;
-        tbody.innerHTML = '';
-        var counts = { ok: 0, warn: 0, error: 0 };
-        rows.forEach(function(row) {
-          if (counts[row.status] !== undefined) counts[row.status]++;
+      function renderResult(row) {
+        var tr = document.querySelector('#audit-table tbody tr[data-entry-id="' + row.entryId + '"]');
+        if (!tr) return;
 
-          var statusLabel = row.status === 'ok' ? 'OK' : (row.status === 'warn' ? '{{ 'Warning'|t('pragmatic-seo')|e('js') }}' : '{{ 'Error'|t('pragmatic-seo')|e('js') }}');
-          var statusTitle = row.status === 'warn'
-            ? '{{ 'There are recommended SEO warnings to improve visibility.'|t('pragmatic-seo')|e('js') }}'
-            : (row.status === 'error' ? '{{ 'There are important SEO errors that should be fixed soon.'|t('pragmatic-seo')|e('js') }}' : '');
+        tr.setAttribute('data-status', row.status);
 
-          var checksHtml = '';
-          Object.keys(row.checks).forEach(function(key) {
-            var passed = row.checks[key];
-            var tip = passed ? '' : (checkTooltips[key] || '');
-            var cls = passed ? 'seo-check' : 'seo-check bad';
-            var titleAttr = (!passed && tip) ? ' title="' + tip.replace(/"/g, '&quot;') + '"' : '';
-            checksHtml += '<span class="' + cls + '"' + titleAttr + '>' + key + ': ' + (passed ? 'ok' : 'fail') + '</span>';
-          });
+        var statusLabel = row.status === 'ok' ? 'OK'
+          : (row.status === 'warn' ? '{{ 'Warning'|t('pragmatic-seo')|e('js') }}'
+          : '{{ 'Error'|t('pragmatic-seo')|e('js') }}');
+        var statusTitle = row.status === 'warn'
+          ? '{{ 'There are recommended SEO warnings to improve visibility.'|t('pragmatic-seo')|e('js') }}'
+          : (row.status === 'error'
+            ? '{{ 'There are important SEO errors that should be fixed soon.'|t('pragmatic-seo')|e('js') }}'
+            : '');
 
-          var tr = document.createElement('tr');
-          tr.setAttribute('data-status', row.status);
-          tr.innerHTML =
-            '<td>' +
-              '<a href="#" class="js-entry-slideout" data-entry-id="' + row.entryId + '" data-site-id="' + row.entrySiteId + '">' + escapeHtml(row.entryTitle) + '</a>' +
-              '<div class="light"><code>ID ' + row.entryId + '</code></div>' +
-            '</td>' +
-            '<td>' +
-              '<span class="seo-status seo-status-' + row.status + '"' + (statusTitle ? ' title="' + statusTitle.replace(/"/g, '&quot;') + '"' : '') + '>' + statusLabel + '</span>' +
-            '</td>' +
-            '<td><div class="seo-checks">' + checksHtml + '</div></td>';
-          tbody.appendChild(tr);
+        tr.querySelector('.js-audit-status').innerHTML =
+          '<span class="seo-status seo-status-' + row.status + '"'
+          + (statusTitle ? ' title="' + statusTitle.replace(/"/g, '&quot;') + '"' : '')
+          + '>' + statusLabel + '</span>';
+
+        var checksHtml = '<div class="seo-checks">';
+        Object.keys(row.checks).forEach(function(key) {
+          var passed = row.checks[key];
+          var tip = passed ? '' : (checkTooltips[key] || '');
+          var cls = passed ? 'seo-check' : 'seo-check bad';
+          var titleAttr = (!passed && tip) ? ' title="' + tip.replace(/"/g, '&quot;') + '"' : '';
+          checksHtml += '<span class="' + cls + '"' + titleAttr + '>' + key + ': ' + (passed ? 'ok' : 'fail') + '</span>';
         });
-
-        if (optError) optError.textContent = labelError + ' (' + counts.error + ')';
-        if (optWarn) optWarn.textContent = labelWarn + ' (' + counts.warn + ')';
-        if (optOk) optOk.textContent = labelOk + ' (' + counts.ok + ')';
-
-        applyFilter(statusSelect ? statusSelect.value : 'all');
-        bindSlideouts(tbody);
-      }
-
-      function escapeHtml(str) {
-        return String(str)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
-      }
-
-      function bindSlideouts(root) {
-        (root || document).querySelectorAll('.js-entry-slideout').forEach(function(link) {
-          link.addEventListener('click', function(ev) {
-            ev.preventDefault();
-            var entryId = parseInt(link.getAttribute('data-entry-id') || '0', 10);
-            var siteId = parseInt(link.getAttribute('data-site-id') || '0', 10);
-            if (!entryId || !window.Craft || typeof Craft.createElementEditor !== 'function') return;
-            Craft.createElementEditor('craft\\elements\\Entry', {
-              elementId: entryId,
-              siteId: siteId || undefined,
-              slideout: true,
-            });
-          });
-        });
+        checksHtml += '</div>';
+        tr.querySelector('.js-audit-checks').innerHTML = checksHtml;
       }
 
       function runAudit() {
-        emptyEl.style.display = 'none';
-        resultsEl.style.display = 'none';
-        progressEl.style.display = '';
-        btn.setAttribute('disabled', 'disabled');
+        if (btn) btn.setAttribute('disabled', 'disabled');
+        if (progressEl) progressEl.style.display = '';
 
         var params = new URLSearchParams(window.location.search);
         var url = Craft.getCpUrl('pragmatic-seo/audit/run') + '?' + params.toString();
@@ -213,49 +172,61 @@
           credentials: 'same-origin',
           headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         })
-          .then(function(response) {
-            if (!response.ok) throw new Error('Request failed');
-            return response.json();
-          })
+          .then(function(r) { if (!r.ok) throw new Error('Request failed'); return r.json(); })
           .then(function(data) {
-            progressEl.style.display = 'none';
+            // Update each row in-place
+            Object.values(data.rows || {}).forEach(renderResult);
 
-            if (data.truncated) {
+            // Update status filter counts
+            var counts = { ok: 0, warn: 0, error: 0 };
+            Object.values(data.rows || {}).forEach(function(r) {
+              if (counts[r.status] !== undefined) counts[r.status]++;
+            });
+            if (optError) optError.textContent = labelError + ' (' + counts.error + ')';
+            if (optWarn)  optWarn.textContent  = labelWarn  + ' (' + counts.warn  + ')';
+            if (optOk)    optOk.textContent    = 'OK (' + counts.ok + ')';
+
+            if (data.truncated && truncatedNotice) {
               truncatedNotice.textContent = '{{ 'Audited %scanned% of %total% entries to maintain performance.'|t('pragmatic-seo')|e('js') }}'
                 .replace('%scanned%', data.scannedEntries)
                 .replace('%total%', data.totalEntries);
               truncatedNotice.style.display = '';
-            } else {
-              truncatedNotice.style.display = 'none';
             }
 
-            if (!data.rows || data.rows.length === 0) {
-              emptyEl.querySelector('p').textContent = '{{ 'No entries with an SEO field found.'|t('pragmatic-seo')|e('js') }}';
-              emptyEl.style.display = '';
-              statusFilter.style.display = 'none';
-            } else {
-              renderRows(data.rows);
-              resultsEl.style.display = '';
-              statusFilter.style.display = '';
-            }
+            if (statusFilter) statusFilter.style.display = '';
+            applyFilter(statusSelect ? statusSelect.value : 'all');
           })
           .catch(function() {
-            progressEl.style.display = 'none';
-            emptyEl.querySelector('p').textContent = '{{ 'Failed to run audit. Please try again.'|t('pragmatic-seo')|e('js') }}';
-            emptyEl.style.display = '';
+            if (window.Craft && Craft.cp && typeof Craft.cp.displayError === 'function') {
+              Craft.cp.displayError('{{ 'Failed to run audit. Please try again.'|t('pragmatic-seo')|e('js') }}');
+            }
           })
           .finally(function() {
-            btn.removeAttribute('disabled');
+            if (btn) btn.removeAttribute('disabled');
+            if (progressEl) progressEl.style.display = 'none';
           });
       }
 
       if (btn) btn.addEventListener('click', runAudit);
 
       if (statusSelect) {
-        statusSelect.addEventListener('change', function() {
-          applyFilter(statusSelect.value);
-        });
+        statusSelect.addEventListener('change', function() { applyFilter(statusSelect.value); });
       }
+
+      // Entry slideouts
+      document.querySelectorAll('.js-entry-slideout').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          var entryId = parseInt(link.getAttribute('data-entry-id') || '0', 10);
+          var siteId  = parseInt(link.getAttribute('data-site-id')  || '0', 10);
+          if (!entryId || !window.Craft || typeof Craft.createElementEditor !== 'function') return;
+          Craft.createElementEditor('craft\\elements\\Entry', {
+            elementId: entryId,
+            siteId: siteId || undefined,
+            slideout: true,
+          });
+        });
+      });
     })();
   {% endjs %}
 {% endblock %}

@@ -106,9 +106,10 @@
               <td>
                 <div class="seo-checks">
                   {% for key, passed in row.checks %}
+                    {% set checkTitle = checkTooltips[key]|default('') %}
                     <span
                       class="seo-check {{ passed ? '' : 'bad' }}"
-                      {{ (not passed and checkTooltips[key] is defined) ? 'title="' ~ checkTooltips[key]|e ~ '"' : '' }}
+                      {{ (not passed and checkTitle) ? 'title="' ~ checkTitle|e ~ '"' : '' }}
                     >
                       {{ key }}: {{ passed ? 'ok' : 'fail' }}
                     </span>

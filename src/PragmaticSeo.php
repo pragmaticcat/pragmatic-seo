@@ -68,11 +68,16 @@ class PragmaticSeo extends Plugin
                 /** @var CraftVariable $variable */
                 $variable = $event->sender;
                 $variable->set('pragmaticSEO', PragmaticSeoVariable::class);
+                $variable->set('pragmaticSeo', PragmaticSeoVariable::class);
             }
         );
 
         Craft::$app->onInit(function () {
             $this->ensureSeoFieldsAreTranslatable();
+            $twig = Craft::$app->getView()->getTwig();
+            $seoVariable = new PragmaticSeoVariable();
+            $twig->addGlobal('pragmaticSEO', $seoVariable);
+            $twig->addGlobal('pragmaticSeo', $seoVariable);
         });
 
         // Register nav item under shared "Tools" group

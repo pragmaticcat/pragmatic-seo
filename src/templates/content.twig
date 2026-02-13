@@ -12,16 +12,16 @@
 {% block sidebar %}
   <nav aria-label="{{ 'Sections'|t('pragmatic-seo') }}">
     <ul class="nav">
-      <li class="{{ not sectionId ? 'sel' : '' }}">
-        <a href="{{ url('pragmatic-seo/content', { site: selectedSite.handle }) }}">
+      <li>
+        <a class="{{ not sectionId ? 'sel' : '' }}" href="{{ url('pragmatic-seo/content', { site: selectedSite.handle }) }}">
           {{ 'All entries'|t('pragmatic-seo') }}
         </a>
       </li>
       {% if sections|length %}
         <li class="heading"><span>{{ 'Sections'|t('pragmatic-seo') }}</span></li>
         {% for section in sections %}
-          <li class="{{ section.id == sectionId ? 'sel' : '' }}">
-            <a href="{{ url('pragmatic-seo/content', { site: selectedSite.handle, section: section.id }) }}">
+          <li>
+            <a class="{{ section.id == sectionId ? 'sel' : '' }}" href="{{ url('pragmatic-seo/content', { site: selectedSite.handle, section: section.id }) }}">
               {{ section.name }}
             </a>
           </li>

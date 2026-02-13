@@ -691,9 +691,6 @@ class DefaultController extends Controller
             }
 
             $section = method_exists($entryType, 'getSection') ? $entryType->getSection() : null;
-            if (!$this->isSectionActiveForSite($section, $siteId)) {
-                continue;
-            }
 
             $seoField = $seoFields[0];
             $defaults = $savedSettings[$entryType->id] ?? null;

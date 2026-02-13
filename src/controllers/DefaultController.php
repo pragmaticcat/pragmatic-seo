@@ -53,14 +53,18 @@ class DefaultController extends Controller
         $sites = Craft::$app->getSites()->getAllSites();
         $selectedSite = Cp::requestedSite() ?? Craft::$app->getSites()->getPrimarySite();
         $selectedSiteId = (int)$selectedSite->id;
+        $sectionId = (int)Craft::$app->getRequest()->getQueryParam('section', 0);
+        $sections = $this->getSeoSectionsForSite($selectedSiteId, $sectionId);
 
         $settings = PragmaticSeo::$plugin->getMetaSettings()->getSiteSettings($selectedSiteId);
-        $audit = $this->buildTechnicalAudit($selectedSiteId, $settings);
+        $audit = $this->buildTechnicalAudit($selectedSiteId, $settings, $sectionId);
 
         return $this->renderTemplate('pragmatic-seo/audit', [
             'sites' => $sites,
             'selectedSite' => $selectedSite,
             'selectedSiteId' => $selectedSiteId,
+            'sections' => $sections,
+            'sectionId' => $sectionId,
             'audit' => $audit,
         ]);
     }
@@ -169,38 +173,7 @@ class DefaultController extends Controller
         $sites = $sitesService->getAllSites();
         $selectedSite = Cp::requestedSite() ?? $sitesService->getPrimarySite();
         $siteId = (int)$selectedSite->id;
-        $sectionsById = [];
-        $availableSectionIds = [];
-        $sectionEntries = Entry::find()
-            ->siteId($siteId)
-            ->status(null);
-        foreach ($sectionEntries->all() as $entry) {
-            if (!$this->entryHasSeoField($entry)) {
-                continue;
-            }
-
-            $entrySection = $entry->getSection();
-            if (!$entrySection) {
-                continue;
-            }
-
-            $entrySectionId = (int)$entrySection->id;
-            $availableSectionIds[$entrySectionId] = true;
-            $sectionsById[$entrySectionId] = $entrySection;
-        }
-
-        $sections = [];
-        foreach (Craft::$app->entries->getAllSections() as $section) {
-            if (isset($availableSectionIds[(int)$section->id])) {
-                $sections[] = $section;
-            }
-        }
-        if ($sectionId && !isset($availableSectionIds[$sectionId])) {
-            $selectedSection = Craft::$app->entries->getSectionById($sectionId);
-            if ($selectedSection) {
-                $sections[] = $selectedSection;
-            }
-        }
+        $sections = $this->getSeoSectionsForSite($siteId, $sectionId);
 
         $entryQuery = Entry::find()->siteId($siteId)->status(null);
         if ($sectionId) {
@@ -296,13 +269,25 @@ class DefaultController extends Controller
     public function actionSitemap(): Response
     {
         $this->ensureSitemapEntryTypeTable();
-        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $selectedSite = Cp::requestedSite() ?? Craft::$app->getSites()->getPrimarySite();
+        $siteId = (int)$selectedSite->id;
+        $sectionId = (int)Craft::$app->getRequest()->getQueryParam('section', 0);
+        $sections = $this->getSeoSectionsForSite($siteId, $sectionId);
         $entryTypeRows = $this->getSitemapEntryTypeRows($siteId);
+        if ($sectionId) {
+            $entryTypeRows = array_values(array_filter(
+                $entryTypeRows,
+                fn(array $row) => (int)($row['sectionId'] ?? 0) === $sectionId
+            ));
+        }
         $splitRows = $this->splitSitemapRowsByPageGroup($entryTypeRows);
 
         return $this->renderTemplate('pragmatic-seo/sitemap', [
             'entryTypeRows' => $splitRows['regular'],
             'pageEntryTypeRows' => $splitRows['page'],
+            'selectedSite' => $selectedSite,
+            'sections' => $sections,
+            'sectionId' => $sectionId,
         ]);
     }
 
@@ -312,7 +297,7 @@ class DefaultController extends Controller
         $this->ensureSitemapEntryTypeTable();
         $request = Craft::$app->getRequest();
         $elements = Craft::$app->getElements();
-        $siteId = Craft::$app->getSites()->getCurrentSite()->id;
+        $siteId = (int)(Cp::requestedSite()?->id ?? Craft::$app->getSites()->getCurrentSite()->id);
 
         $typeSettings = (array)$request->getBodyParam('entryTypes', []);
         foreach ($typeSettings as $entryTypeId => $settings) {
@@ -739,6 +724,7 @@ class DefaultController extends Controller
             $rows[] = [
                 'entryTypeId' => $entryType->id,
                 'entryTypeName' => $entryType->name,
+                'sectionId' => (int)($section?->id ?? 0),
                 'sectionName' => $section?->name,
                 'sectionType' => (string)($section?->type ?? ''),
                 'seoHandle' => $seoField->handle,
@@ -872,10 +858,13 @@ class DefaultController extends Controller
         }
     }
 
-    private function buildTechnicalAudit(int $siteId, array $settings): array
+    private function buildTechnicalAudit(int $siteId, array $settings, int $sectionId = 0): array
     {
         $maxEntries = 300;
         $entryQuery = Entry::find()->siteId($siteId)->status(null);
+        if ($sectionId) {
+            $entryQuery->sectionId($sectionId);
+        }
         $totalEntries = (int)(clone $entryQuery)->count();
         $entries = (clone $entryQuery)->limit($maxEntries)->all();
         $sites = Craft::$app->getSites()->getAllSites();
@@ -962,6 +951,44 @@ class DefaultController extends Controller
             'scannedEntries' => count($entries),
             'totalEntries' => $totalEntries,
         ];
+    }
+
+    private function getSeoSectionsForSite(int $siteId, int $selectedSectionId = 0): array
+    {
+        $availableSectionIds = [];
+        $entries = Entry::find()
+            ->siteId($siteId)
+            ->status(null)
+            ->all();
+
+        foreach ($entries as $entry) {
+            if (!$this->entryHasSeoField($entry)) {
+                continue;
+            }
+
+            $section = $entry->getSection();
+            if (!$section) {
+                continue;
+            }
+
+            $availableSectionIds[(int)$section->id] = true;
+        }
+
+        $sections = [];
+        foreach (Craft::$app->entries->getAllSections() as $section) {
+            if (isset($availableSectionIds[(int)$section->id])) {
+                $sections[] = $section;
+            }
+        }
+
+        if ($selectedSectionId && !isset($availableSectionIds[$selectedSectionId])) {
+            $selectedSection = Craft::$app->entries->getSectionById($selectedSectionId);
+            if ($selectedSection) {
+                $sections[] = $selectedSection;
+            }
+        }
+
+        return $sections;
     }
 
     private function buildSitemapXml(array $urls): string

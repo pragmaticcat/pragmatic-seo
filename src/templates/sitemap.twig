@@ -32,10 +32,16 @@
 {% endblock %}
 
 {% block content %}
+  {% css %}
+    .sitemap-toggle-all { font-size: 11px; font-weight: normal; margin-left: 6px; opacity: 0.6; }
+    .sitemap-toggle-all a { cursor: pointer; }
+    .sitemap-toggle-all a:hover { opacity: 1; }
+  {% endcss %}
+
   {% if rows is empty %}
     <p>{{ 'No entries with an SEO field in their layout.'|t('pragmatic-seo') }}</p>
   {% else %}
-    <form method="post" accept-charset="UTF-8">
+    <form id="sitemap-form" method="post" accept-charset="UTF-8">
       {{ csrfInput() }}
       {{ actionInput('pragmatic-seo/default/save-sitemap') }}
       <input type="hidden" name="site" value="{{ selectedSite.id }}">
@@ -45,8 +51,22 @@
         <thead>
           <tr>
             <th>{{ 'Entry'|t('pragmatic-seo') }}</th>
-            <th>{{ 'Visible in sitemap'|t('pragmatic-seo') }}</th>
-            <th>{{ 'Include images'|t('pragmatic-seo') }}</th>
+            <th>
+              {{ 'Visible in sitemap'|t('pragmatic-seo') }}
+              <span class="sitemap-toggle-all">
+                <a class="js-toggle-col" data-col="1" data-state="on">{{ 'All'|t('app') }}</a>
+                /
+                <a class="js-toggle-col" data-col="1" data-state="off">{{ 'None'|t('app') }}</a>
+              </span>
+            </th>
+            <th>
+              {{ 'Include images'|t('pragmatic-seo') }}
+              <span class="sitemap-toggle-all">
+                <a class="js-toggle-col" data-col="2" data-state="on">{{ 'All'|t('app') }}</a>
+                /
+                <a class="js-toggle-col" data-col="2" data-state="off">{{ 'None'|t('app') }}</a>
+              </span>
+            </th>
             <th>{{ 'Action'|t('pragmatic-seo') }}</th>
           </tr>
         </thead>
@@ -103,25 +123,59 @@
   {% endif %}
 
   {% js %}
-    document.querySelectorAll('.js-entry-slideout').forEach(function(link) {
-      link.addEventListener('click', function(ev) {
-        ev.preventDefault();
-        var entryId = parseInt(link.getAttribute('data-entry-id'), 10);
-        var siteId = parseInt(link.getAttribute('data-site-id'), 10);
-        if (!entryId || !window.Craft) return;
-        Craft.createElementEditor('craft\\elements\\Entry', {
-          elementId: entryId,
-          siteId: siteId || undefined,
-          slideout: true,
-        });
-      });
-    });
-
-    // AJAX per-row save
     (function() {
-      var form = document.querySelector('form[action]');
+      var form = document.getElementById('sitemap-form');
       if (!form) return;
 
+      // Entry slideouts
+      form.querySelectorAll('.js-entry-slideout').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          var entryId = parseInt(link.getAttribute('data-entry-id'), 10);
+          var siteId = parseInt(link.getAttribute('data-site-id'), 10);
+          if (!entryId || !window.Craft) return;
+          Craft.createElementEditor('craft\\elements\\Entry', {
+            elementId: entryId,
+            siteId: siteId || undefined,
+            slideout: true,
+          });
+        });
+      });
+
+      // Toggle-all column links
+      document.querySelectorAll('.js-toggle-col').forEach(function(link) {
+        link.addEventListener('click', function(ev) {
+          ev.preventDefault();
+          var colIndex = parseInt(link.getAttribute('data-col'), 10);
+          var turnOn = link.getAttribute('data-state') === 'on';
+          form.querySelectorAll('tbody tr').forEach(function(tr) {
+            var td = tr.cells[colIndex];
+            if (!td) return;
+            var ls = td.querySelector('.lightswitch');
+            if (!ls) return;
+            // Use Craft's LightSwitch instance if available (jQuery-based)
+            if (window.$ && $(ls).data('lightswitch')) {
+              var instance = $(ls).data('lightswitch');
+              if (turnOn) instance.turnOn();
+              else instance.turnOff();
+            } else {
+              // Fallback: toggle class and update hidden input
+              var input = ls.querySelector('input');
+              if (turnOn) {
+                ls.classList.add('on');
+                ls.setAttribute('aria-checked', 'true');
+                if (input) input.value = input.getAttribute('data-value') || '1';
+              } else {
+                ls.classList.remove('on');
+                ls.setAttribute('aria-checked', 'false');
+                if (input) input.value = '';
+              }
+            }
+          });
+        });
+      });
+
+      // AJAX per-row save
       function displayNotice(message, isError) {
         if (window.Craft && Craft.cp) {
           if (isError && typeof Craft.cp.displayError === 'function') { Craft.cp.displayError(message); return; }
@@ -138,7 +192,7 @@
         formData.set(submitter.name, submitter.value);
         submitter.setAttribute('disabled', 'disabled');
 
-        fetch(form.getAttribute('action') || window.location.href, {
+        fetch(Craft.getCpUrl('pragmatic-seo/sitemap/save'), {
           method: 'POST',
           body: formData,
           credentials: 'same-origin',
@@ -149,7 +203,7 @@
             if (!data || data.success !== true) throw new Error((data && data.message) || 'Failed');
             displayNotice(data.message || 'Sitemap guardado.', false);
           })
-          .catch(function(err) { displayNotice(err?.message || 'Error al guardar.', true); })
+          .catch(function(err) { displayNotice((err && err.message) || 'Error al guardar.', true); })
           .finally(function() { submitter.removeAttribute('disabled'); });
       });
     })();

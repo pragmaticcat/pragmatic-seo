@@ -53,7 +53,7 @@
           {% if pageEntryTypeRows is not empty %}
             <tr id="section-pages">
               <td>
-                <details>
+                <details{{ sectionId ? ' open' : '' }}>
                   <summary><strong>Page</strong> <span class="light">({{ pageEntryTypeRows|length }} entry types)</span></summary>
                   <div style="margin-top: 8px; display: grid; gap: 12px;">
                     {% for row in pageEntryTypeRows %}
@@ -135,7 +135,7 @@
           {% for row in entryTypeRows %}
             <tr id="section-{{ row.entryTypeId }}">
               <td>
-                <details>
+                <details{{ sectionId ? ' open' : '' }}>
                   <summary><strong>{{ row.sectionName ?: row.entryTypeName }}</strong> <span class="light">({{ row.entryTypeName }} · {{ row.seoHandle }})</span></summary>
                   <div style="margin-top: 8px;">
                     <table class="data fullwidth">

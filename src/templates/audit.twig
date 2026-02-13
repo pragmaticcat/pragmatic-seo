@@ -8,12 +8,6 @@
   { label: 'Audit'|t('pragmatic-seo'), url: url('pragmatic-seo/audit') },
 ] %}
 
-{% block actionButton %}
-  <button id="run-audit-btn" class="btn danger" type="button">
-    {{ 'Run audit'|t('pragmatic-seo') }}
-  </button>
-{% endblock %}
-
 {% block sidebar %}
   <nav aria-label="{{ 'Sections'|t('pragmatic-seo') }}">
     <ul class="nav">
@@ -34,31 +28,6 @@
       {% endif %}
     </ul>
   </nav>
-  <div id="audit-status-filter" style="display:none;">
-    <ul class="nav" style="margin-top: 16px;">
-      <li class="heading"><span>{{ 'Status'|t('pragmatic-seo') }}</span></li>
-      <li class="sel" data-filter="all">
-        <a href="#" class="js-status-filter" data-filter="all">
-          {{ 'All'|t('pragmatic-seo') }} <span id="count-all" class="light"></span>
-        </a>
-      </li>
-      <li data-filter="error">
-        <a href="#" class="js-status-filter" data-filter="error">
-          {{ 'Errors'|t('pragmatic-seo') }} <span id="count-error" class="light"></span>
-        </a>
-      </li>
-      <li data-filter="warn">
-        <a href="#" class="js-status-filter" data-filter="warn">
-          {{ 'Warnings'|t('pragmatic-seo') }} <span id="count-warn" class="light"></span>
-        </a>
-      </li>
-      <li data-filter="ok">
-        <a href="#" class="js-status-filter" data-filter="ok">
-          OK <span id="count-ok" class="light"></span>
-        </a>
-      </li>
-    </ul>
-  </div>
 {% endblock %}
 
 {% block content %}
@@ -90,23 +59,29 @@
       background: #fef2f2;
       color: #b91c1c;
     }
-    #audit-empty {
-      padding: 24px 0;
-      color: #6b7280;
-    }
-    #audit-progress {
-      display: none;
-      padding: 24px 0;
-      color: #6b7280;
-    }
   {% endcss %}
 
-  <div id="audit-empty">
-    <p>{{ 'Click "Run audit" to analyse entries in this section.'|t('pragmatic-seo') }}</p>
+  <div class="flex" style="align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+    <button id="run-audit-btn" class="btn danger" type="button">
+      {{ 'Run audit'|t('pragmatic-seo') }}
+    </button>
+    <div id="audit-status-filter" style="display:none;">
+      <div class="select">
+        <select id="audit-status-select">
+          <option value="all">{{ 'All statuses'|t('pragmatic-seo') }}</option>
+          <option value="error" id="opt-error">{{ 'Errors'|t('pragmatic-seo') }}</option>
+          <option value="warn" id="opt-warn">{{ 'Warnings'|t('pragmatic-seo') }}</option>
+          <option value="ok" id="opt-ok">OK</option>
+        </select>
+      </div>
+    </div>
+    <span id="audit-progress" style="display:none; color:#6b7280;">
+      {{ 'Running audit…'|t('pragmatic-seo') }}
+    </span>
   </div>
 
-  <div id="audit-progress">
-    <p>{{ 'Running audit…'|t('pragmatic-seo') }}</p>
+  <div id="audit-empty">
+    <p class="light">{{ 'Click "Run audit" to analyse entries in this section.'|t('pragmatic-seo') }}</p>
   </div>
 
   <div id="audit-results" style="display:none;">
@@ -142,22 +117,18 @@
       var tbody = document.getElementById('audit-tbody');
       var truncatedNotice = document.getElementById('audit-truncated-notice');
       var statusFilter = document.getElementById('audit-status-filter');
-      var currentFilter = 'all';
-
-      function setCount(id, n) {
-        var el = document.getElementById(id);
-        if (el) el.textContent = n > 0 ? '(' + n + ')' : '';
-      }
+      var statusSelect = document.getElementById('audit-status-select');
+      var optError = document.getElementById('opt-error');
+      var optWarn = document.getElementById('opt-warn');
+      var optOk = document.getElementById('opt-ok');
+      var labelError = '{{ 'Errors'|t('pragmatic-seo')|e('js') }}';
+      var labelWarn = '{{ 'Warnings'|t('pragmatic-seo')|e('js') }}';
+      var labelOk = 'OK';
 
       function applyFilter(filter) {
-        currentFilter = filter;
-        document.querySelectorAll('#audit-status-filter li[data-filter]').forEach(function(li) {
-          li.classList.toggle('sel', li.getAttribute('data-filter') === filter);
-        });
         if (!tbody) return;
         tbody.querySelectorAll('tr[data-status]').forEach(function(tr) {
-          var show = filter === 'all' || tr.getAttribute('data-status') === filter;
-          tr.style.display = show ? '' : 'none';
+          tr.style.display = (filter === 'all' || tr.getAttribute('data-status') === filter) ? '' : 'none';
         });
       }
 
@@ -196,13 +167,11 @@
           tbody.appendChild(tr);
         });
 
-        var total = counts.ok + counts.warn + counts.error;
-        setCount('count-all', total);
-        setCount('count-ok', counts.ok);
-        setCount('count-warn', counts.warn);
-        setCount('count-error', counts.error);
+        if (optError) optError.textContent = labelError + ' (' + counts.error + ')';
+        if (optWarn) optWarn.textContent = labelWarn + ' (' + counts.warn + ')';
+        if (optOk) optOk.textContent = labelOk + ' (' + counts.ok + ')';
 
-        applyFilter(currentFilter);
+        applyFilter(statusSelect ? statusSelect.value : 'all');
         bindSlideouts(tbody);
       }
 
@@ -270,7 +239,7 @@
               statusFilter.style.display = '';
             }
           })
-          .catch(function(err) {
+          .catch(function() {
             progressEl.style.display = 'none';
             emptyEl.querySelector('p').textContent = '{{ 'Failed to run audit. Please try again.'|t('pragmatic-seo')|e('js') }}';
             emptyEl.style.display = '';
@@ -280,16 +249,13 @@
           });
       }
 
-      if (btn) {
-        btn.addEventListener('click', runAudit);
-      }
+      if (btn) btn.addEventListener('click', runAudit);
 
-      document.querySelectorAll('.js-status-filter').forEach(function(link) {
-        link.addEventListener('click', function(ev) {
-          ev.preventDefault();
-          applyFilter(link.getAttribute('data-filter'));
+      if (statusSelect) {
+        statusSelect.addEventListener('change', function() {
+          applyFilter(statusSelect.value);
         });
-      });
+      }
     })();
   {% endjs %}
 {% endblock %}

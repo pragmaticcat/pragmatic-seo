@@ -382,8 +382,9 @@ class DefaultController extends Controller
     public function actionSaveContent(): Response
     {
         $this->requirePostRequest();
-        $saveRow = Craft::$app->getRequest()->getBodyParam('saveRow');
-        $entries = Craft::$app->getRequest()->getBodyParam('entries', []);
+        $request = Craft::$app->getRequest();
+        $saveRow = $request->getBodyParam('saveRow');
+        $entries = $request->getBodyParam('entries', []);
         if ($saveRow === null || !isset($entries[$saveRow])) {
             throw new BadRequestHttpException('Invalid entry payload.');
         }
@@ -392,7 +393,7 @@ class DefaultController extends Controller
         $entryId = (int)($row['entryId'] ?? 0);
         $fieldHandle = (string)($row['fieldHandle'] ?? '');
         $values = (array)($row['values'] ?? []);
-        $requestedSiteId = (int)Craft::$app->getRequest()->getBodyParam('site', 0);
+        $requestedSiteId = (int)$request->getBodyParam('site', 0);
         if (!$entryId || $fieldHandle === '') {
             throw new BadRequestHttpException('Missing entry data.');
         }
@@ -427,6 +428,14 @@ class DefaultController extends Controller
 
         Craft::$app->getElements()->saveElement($entry, false, false);
         Craft::$app->getSession()->setNotice('Contenido SEO guardado.');
+
+        if ($request->getAcceptsJson() || $request->getIsAjax()) {
+            return $this->asJson([
+                'success' => true,
+                'message' => 'Contenido SEO guardado.',
+            ]);
+        }
+
         return $this->redirectToPostedUrl();
     }
 

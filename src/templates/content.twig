@@ -228,6 +228,53 @@
             });
         }
 
+        function displayNotice(message, isError) {
+          if (window.Craft && Craft.cp) {
+            if (isError && typeof Craft.cp.displayError === 'function') {
+              Craft.cp.displayError(message);
+              return;
+            }
+            if (!isError && typeof Craft.cp.displayNotice === 'function') {
+              Craft.cp.displayNotice(message);
+              return;
+            }
+          }
+        }
+
+        function saveRowViaAjax(form, submitter) {
+          const formData = new FormData(form);
+          if (submitter?.name) {
+            formData.set(submitter.name, submitter.value);
+          }
+
+          submitter?.setAttribute('disabled', 'disabled');
+          fetch(form.getAttribute('action') || window.location.href, {
+            method: 'POST',
+            body: formData,
+            credentials: 'same-origin',
+            headers: {
+              'Accept': 'application/json',
+              'X-Requested-With': 'XMLHttpRequest',
+            },
+          })
+            .then(function(response) {
+              if (!response.ok) throw new Error('Failed to save row.');
+              return response.json();
+            })
+            .then(function(data) {
+              if (!data || data.success !== true) {
+                throw new Error((data && data.message) || 'Failed to save row.');
+              }
+              displayNotice(data.message || 'Contenido SEO guardado.', false);
+            })
+            .catch(function(error) {
+              displayNotice(error?.message || 'Error al guardar la fila.', true);
+            })
+            .finally(function() {
+              submitter?.removeAttribute('disabled');
+            });
+        }
+
         function resetPageAndSubmit() {
           if (pageInput) pageInput.value = '1';
           submitViaAjax();
@@ -251,6 +298,16 @@
 
           event.preventDefault();
           submitViaAjax(nextUrl.toString());
+        });
+        resultsContainer?.addEventListener('submit', function(event) {
+          const form = event.target;
+          if (!(form instanceof HTMLFormElement)) return;
+
+          const submitter = event.submitter;
+          if (!submitter || submitter.name !== 'saveRow') return;
+
+          event.preventDefault();
+          saveRowViaAjax(form, submitter);
         });
         bindEntrySlideouts(document);
       }

@@ -53,6 +53,18 @@ class SeoField extends Field
             return $value;
         }
 
+        // Values coming from element edit forms arrive as arrays; normalize them directly.
+        if (is_array($value)) {
+            return new SeoFieldValue([
+                'title' => array_key_exists('title', $value) ? trim((string)$value['title']) : '',
+                'description' => array_key_exists('description', $value) ? trim((string)$value['description']) : '',
+                'imageId' => $this->normalizeImageId($value['imageId'] ?? null),
+                'imageDescription' => array_key_exists('imageDescription', $value) ? trim((string)$value['imageDescription']) : '',
+                'sitemapEnabled' => array_key_exists('sitemapEnabled', $value) ? (bool)$value['sitemapEnabled'] : null,
+                'sitemapIncludeImages' => array_key_exists('sitemapIncludeImages', $value) ? (bool)$value['sitemapIncludeImages'] : null,
+            ]);
+        }
+
         $this->ensureStorageTable();
 
         if ($element && $element->id && $this->id) {
@@ -77,7 +89,18 @@ class SeoField extends Field
         $this->ensureStorageTable();
 
         if ($value instanceof SeoFieldValue) {
-            $data = $value->toArray();
+            $data = [
+                'title' => (string)$value->title,
+                'description' => (string)$value->description,
+                'imageId' => $this->normalizeImageId($value->imageId),
+                'imageDescription' => (string)$value->imageDescription,
+            ];
+            if ($value->sitemapEnabled !== null) {
+                $data['sitemapEnabled'] = (bool)$value->sitemapEnabled;
+            }
+            if ($value->sitemapIncludeImages !== null) {
+                $data['sitemapIncludeImages'] = (bool)$value->sitemapIncludeImages;
+            }
         } elseif (is_array($value)) {
             $data = [
                 'title' => (string)($value['title'] ?? ''),

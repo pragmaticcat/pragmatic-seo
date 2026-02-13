@@ -696,6 +696,11 @@ class DefaultController extends Controller
                 continue;
             }
 
+            $section = method_exists($entryType, 'getSection') ? $entryType->getSection() : null;
+            if (!$this->isSectionActiveForSite($section, $siteId)) {
+                continue;
+            }
+
             $seoField = $seoFields[0];
             $defaults = $savedSettings[$entryType->id] ?? null;
             $settings = [
@@ -730,8 +735,6 @@ class DefaultController extends Controller
                 // Show only entry types that actually have entries in the active site.
                 continue;
             }
-
-            $section = method_exists($entryType, 'getSection') ? $entryType->getSection() : null;
 
             $rows[] = [
                 'entryTypeId' => $entryType->id,
@@ -778,6 +781,43 @@ class DefaultController extends Controller
 
         // Craft "Single" sections usually represent page-like content.
         return $sectionType === 'single';
+    }
+
+    private function isSectionActiveForSite(mixed $section, int $siteId): bool
+    {
+        if (!$section || !method_exists($section, 'getSiteSettings')) {
+            return false;
+        }
+
+        $allSettings = $section->getSiteSettings();
+        if (!is_array($allSettings) || empty($allSettings)) {
+            return false;
+        }
+
+        $siteSetting = null;
+        if (isset($allSettings[$siteId])) {
+            $siteSetting = $allSettings[$siteId];
+        } else {
+            foreach ($allSettings as $setting) {
+                if ((int)($setting->siteId ?? 0) === $siteId) {
+                    $siteSetting = $setting;
+                    break;
+                }
+            }
+        }
+
+        if (!$siteSetting) {
+            return false;
+        }
+
+        if (isset($siteSetting->enabledByDefault)) {
+            return (bool)$siteSetting->enabledByDefault;
+        }
+        if (isset($siteSetting->enabled)) {
+            return (bool)$siteSetting->enabled;
+        }
+
+        return true;
     }
 
     private function parseUsedFilter(mixed $rawValue): bool

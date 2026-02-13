@@ -861,15 +861,23 @@ class DefaultController extends Controller
                 $status = $errorCount > 0 ? 'error' : ($warnCount > 0 ? 'warn' : 'ok');
                 $summary['rows']++;
                 $summary[$status]++;
+                $failedChecks = [];
+                foreach ($checks as $check => $passed) {
+                    if (!$passed) {
+                        $failedChecks[] = $check;
+                    }
+                }
 
                 $rows[] = [
                     'entryId' => (int)$entry->id,
+                    'entrySiteId' => (int)$entry->siteId,
                     'entryTitle' => $entry->title ?: 'Entry #' . $entry->id,
                     'entryUrl' => $entry->url,
                     'entryCpUrl' => $entry->cpEditUrl,
                     'fieldHandle' => $field->handle,
                     'status' => $status,
                     'checks' => $checks,
+                    'failedChecks' => $failedChecks,
                 ];
             }
         }

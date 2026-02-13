@@ -67,6 +67,16 @@
   <h2 style="margin-bottom: 4px;">Informe técnico SEO</h2>
   <p class="light" style="margin-top: 0;">Comprobaciones automáticas para mejorar cobertura e interpretación en Search Console.</p>
 
+  {% set checkTooltips = {
+    title: 'Falta título final. Define un título SEO o asegúrate de que la entry tenga título.',
+    description: 'Falta descripción SEO. Añádela para mejorar snippets en resultados.',
+    canonical: 'No se ha podido resolver URL canónica para esta entry.',
+    image: 'No hay imagen SEO. Se recomienda para mejorar compartición social.',
+    robots: 'Revisa la directiva robots para esta página.',
+    jsonLd: 'JSON-LD desactivado en opciones para este idioma/sitio.',
+    hreflang: 'No se han detectado suficientes variantes localizadas para emitir hreflang.',
+  } %}
+
   <div class="seo-audit-summary">
     <span class="seo-audit-chip">Filas auditadas: {{ audit.summary.rows }}</span>
     <span class="seo-audit-chip">OK: {{ audit.summary.ok }}</span>
@@ -81,36 +91,42 @@
   {% if audit.rows is empty %}
     <p>No hay entradas con campo SEO para auditar.</p>
   {% else %}
-    <table class="data fullwidth">
-      <thead>
-        <tr>
-          <th>Entry</th>
-          <th>Field</th>
-          <th>Estado</th>
-          <th>Checks</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for row in audit.rows %}
+      <table class="data fullwidth">
+        <thead>
           <tr>
-            <td>
-              <a href="{{ row.entryCpUrl ?: '#' }}" {{ row.entryCpUrl ? '' : 'class="disabled"' }}>{{ row.entryTitle }}</a>
-              <div class="light"><code>ID {{ row.entryId }}</code></div>
-            </td>
-            <td><code>{{ row.fieldHandle }}</code></td>
-            <td>
-              <span class="seo-status seo-status-{{ row.status }}">
-                {{ row.status == 'ok' ? 'OK' : (row.status == 'warn' ? 'Aviso' : 'Error') }}
-              </span>
-            </td>
-            <td>
-              <div class="seo-checks">
-                {% for key, passed in row.checks %}
-                  <span class="seo-check {{ passed ? '' : 'bad' }}">
-                    {{ key }}: {{ passed ? 'ok' : 'fail' }}
-                  </span>
-                {% endfor %}
-              </div>
+            <th>Entry</th>
+            <th>Estado</th>
+            <th>Checks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in audit.rows %}
+            <tr>
+              <td>
+                <a href="#" class="js-entry-slideout" data-entry-id="{{ row.entryId }}" data-site-id="{{ row.entrySiteId }}">{{ row.entryTitle }}</a>
+                <div class="light"><code>ID {{ row.entryId }}</code></div>
+              </td>
+              <td>
+                {% set statusTitle = row.status == 'warn'
+                  ? 'Hay avisos SEO recomendados para mejorar visibilidad.'
+                  : (row.status == 'error'
+                    ? 'Hay errores SEO importantes que conviene corregir cuanto antes.'
+                    : '') %}
+                <span class="seo-status seo-status-{{ row.status }}" {{ statusTitle ? 'title="' ~ statusTitle|e ~ '"' : '' }}>
+                  {{ row.status == 'ok' ? 'OK' : (row.status == 'warn' ? 'Aviso' : 'Error') }}
+                </span>
+              </td>
+              <td>
+                <div class="seo-checks">
+                  {% for key, passed in row.checks %}
+                    <span
+                      class="seo-check {{ passed ? '' : 'bad' }}"
+                      {{ (not passed and checkTooltips[key] is defined) ? 'title="' ~ checkTooltips[key]|e ~ '"' : '' }}
+                    >
+                      {{ key }}: {{ passed ? 'ok' : 'fail' }}
+                    </span>
+                  {% endfor %}
+                </div>
             </td>
           </tr>
         {% endfor %}
@@ -122,11 +138,28 @@
     (function() {
       const form = document.getElementById('audit-filter');
       const site = document.getElementById('site');
-      if (!form || !site) return;
-      site.addEventListener('change', function() {
-        form.submit();
+      if (form && site) {
+        site.addEventListener('change', function() {
+          form.submit();
+        });
+      }
+
+      document.querySelectorAll('.js-entry-slideout').forEach(function(link) {
+        link.addEventListener('click', function(event) {
+          event.preventDefault();
+          const entryId = parseInt(link.getAttribute('data-entry-id') || '0', 10);
+          const siteId = parseInt(link.getAttribute('data-site-id') || '0', 10);
+          if (!entryId || !window.Craft || typeof Craft.createElementEditor !== 'function') {
+            return;
+          }
+
+          Craft.createElementEditor('craft\\elements\\Entry', {
+            elementId: entryId,
+            siteId: siteId || undefined,
+            slideout: true,
+          });
+        });
       });
     })();
   {% endjs %}
 {% endblock %}
-

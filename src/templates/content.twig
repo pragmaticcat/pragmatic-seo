@@ -286,9 +286,19 @@
             searchTimer = setTimeout(resetPageAndSubmit, 300);
           });
         }
-        [sectionSelect, siteSelect, perPageSelect].forEach(function(el) {
-          if (el) el.addEventListener('change', resetPageAndSubmit);
-        });
+        if (sectionSelect) {
+          sectionSelect.addEventListener('change', resetPageAndSubmit);
+        }
+        if (perPageSelect) {
+          perPageSelect.addEventListener('change', resetPageAndSubmit);
+        }
+        if (siteSelect) {
+          siteSelect.addEventListener('change', function() {
+            if (searchInput) searchInput.value = '';
+            if (sectionSelect) sectionSelect.value = '';
+            resetPageAndSubmit();
+          });
+        }
         resultsContainer?.addEventListener('click', function(event) {
           const link = event.target.closest('a[href]');
           if (!link || link.classList.contains('js-entry-slideout')) return;
